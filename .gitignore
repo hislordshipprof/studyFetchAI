@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# Project-specific ignores
+/scripts
+.cursorrules
+projectScope.md
+memory-bank/
+.claude/
+.superdesign/
+
+# Claude AI generated files
+**/claude-*
+**/.claude
+**/claude_*
+claude.*

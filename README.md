@@ -1,36 +1,166 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StudyFetch AI PDF Tutor
 
-## Getting Started
+An AI-powered PDF tutor that helps students understand documents through interactive chat and real-time annotations.
 
-First, run the development server:
+## Features
 
+- 📄 **PDF Upload & Management**: Upload and organize your PDF documents
+- 💬 **AI-Powered Chat**: Ask questions and get context-aware answers about your PDFs
+- ✏️ **Smart Annotations**: AI highlights and circles important content in real-time
+- 🎤 **Voice Interaction**: Speak questions naturally and hear responses
+- 📱 **Responsive Design**: Works on desktop, tablet, and mobile devices
+- 💾 **Persistent Sessions**: Resume your learning where you left off
+
+## Tech Stack
+
+- **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: PostgreSQL
+- **AI**: OpenAI GPT-4, Vercel AI SDK
+- **Voice**: Web Speech API + OpenAI Whisper/TTS
+- **Storage**: Vercel Blob Storage
+- **UI Components**: shadcn/ui
+
+## Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- PostgreSQL database
+- OpenAI API key
+
+## Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd studyfetch
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+Create a `.env.local` file in the root directory with the following:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/studyfetch_db"
 
-## Learn More
+# Authentication
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-secret-key-here-generate-with-openssl-rand-base64-32"
 
-To learn more about Next.js, take a look at the following resources:
+# OpenAI
+OPENAI_API_KEY="sk-your-openai-api-key-here"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Vercel Blob Storage (for production)
+BLOB_READ_WRITE_TOKEN="vercel_blob_token_here"
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. Set up the database:
+```bash
+# Generate Prisma client
+npx prisma generate
 
-## Deploy on Vercel
+# Run migrations
+npx prisma db push
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# (Optional) Open Prisma Studio to view database
+npx prisma studio
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+5. Run the development server:
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Project Structure
+
+```
+src/
+├── app/                  # Next.js App Router pages
+│   ├── (auth)/          # Authentication pages
+│   ├── api/             # API routes
+│   ├── dashboard/       # Document dashboard
+│   └── tutor/           # Main tutoring interface
+├── components/          # React components
+│   ├── auth/           # Authentication components
+│   ├── chat/           # Chat interface components
+│   ├── pdf/            # PDF viewer components
+│   └── ui/             # shadcn/ui components
+├── lib/                # Utility functions
+├── hooks/              # Custom React hooks
+└── types/              # TypeScript type definitions
+```
+
+## Development
+
+### Running Tests
+```bash
+npm test
+```
+
+### Building for Production
+```bash
+npm run build
+```
+
+### Deploying to Vercel
+```bash
+vercel --prod
+```
+
+## Environment Variables
+
+See `.env.example` for all required environment variables:
+
+- `DATABASE_URL`: PostgreSQL connection string
+- `NEXTAUTH_URL`: Application URL for authentication
+- `NEXTAUTH_SECRET`: Secret for JWT encryption
+- `OPENAI_API_KEY`: OpenAI API key for AI features
+- `BLOB_READ_WRITE_TOKEN`: Vercel Blob storage token
+
+## API Documentation
+
+### Authentication
+- `POST /api/auth/register` - Create new user account
+- `POST /api/auth/login` - User login
+- `GET /api/auth/session` - Get current session
+
+### Documents
+- `POST /api/documents/upload` - Upload PDF document
+- `GET /api/documents` - List user documents
+- `GET /api/documents/[id]` - Get document details
+- `DELETE /api/documents/[id]` - Delete document
+
+### Chat
+- `POST /api/chat/[documentId]/messages` - Send message
+- `GET /api/chat/[documentId]` - Get chat history
+- `GET /api/chat/[documentId]/stream` - SSE stream for real-time chat
+
+### AI
+- `POST /api/ai/analyze` - Analyze PDF content
+- `POST /api/ai/chat` - Process AI chat message
+- `POST /api/ai/annotate` - Generate annotations
+- `POST /api/ai/voice/transcribe` - Speech to text
+- `POST /api/ai/voice/synthesize` - Text to speech
+
+## Contributing
+
+This is a technical assessment project for StudyFetch. For any questions, contact marelle@studyfetch.com.
+
+## License
+
+Private - StudyFetch Technical Assessment
+
+## Demo
+
+[Live Demo URL] - Will be added upon deployment
+
+## Support
+
+For issues or questions about this assessment, please contact marelle@studyfetch.com
