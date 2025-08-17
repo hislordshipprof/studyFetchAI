@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Document as PDFDocument, Page, pdfjs } from 'react-pdf';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -12,104 +13,29 @@ import {
   RotateCw,
   Maximize,
   Download,
-  FileText
+  FileText,
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import PDFAnnotations from "./PDFAnnotations";
 import type { Document, Annotation } from "@/types/pdf";
 
-// Mock PDF content for demonstration
-const mockPDFPages: Record<string, Record<number, string>> = {
-  "doc_1": {
-    1: `Chapter 5: Viruses and Bacteria
-
-Introduction to Microorganisms
-
-This chapter explores the fascinating world of microscopic organisms, 
-focusing specifically on viruses and bacteria. These tiny life forms 
-play crucial roles in our ecosystem and have significant impacts on 
-human health and disease.
-
-Learning Objectives:
-• Understand what viruses are and how they function
-• Learn about bacterial structure and reproduction
-• Explore the differences between viruses and bacteria
-• Examine their roles in disease and health`,
-
-    5: `What is a Virus?
-
-A virus is a microscopic infectious agent that can only replicate 
-inside the living cells of an organism. Viruses are much smaller 
-than bacteria and are not considered to be living organisms because 
-they cannot reproduce independently.
-
-Key Characteristics of Viruses:
-• Composed of genetic material (DNA or RNA)
-• Surrounded by a protein coat called a capsid
-• Cannot reproduce without a host cell
-• Cause various diseases in humans, animals, and plants
-
-Virus Structure:
-The basic structure of a virus consists of nucleic acid (genetic 
-material) surrounded by a protein coat. Some viruses also have 
-an additional outer envelope made of lipids.`,
-
-    18: `Viral Replication Cycle
-
-The viral replication cycle involves multiple stages through which 
-a virus reproduces within a host cell:
-
-1. Attachment: The virus binds to specific receptor sites on the 
-   host cell surface.
-
-2. Penetration: The virus or its genetic material enters the host cell.
-
-3. Replication: The viral genetic material is replicated using the 
-   host cell's machinery.
-
-4. Assembly: New viral components are assembled into complete viruses.
-
-5. Release: New viruses are released from the host cell, often 
-   destroying the cell in the process.
-
-This cycle allows viruses to spread from cell to cell and from 
-organism to organism, leading to viral infections and diseases.`
-  },
-  "doc_2": {
-    1: `Chapter 1: Introduction to Quantum Physics
-
-Quantum mechanics is a fundamental theory in physics that describes 
-the behavior of matter and energy at the atomic and subatomic level. 
-It represents one of the most significant scientific discoveries of 
-the 20th century.
-
-Historical Development:
-• Max Planck's quantum hypothesis (1900)
-• Einstein's photoelectric effect (1905)
-• Bohr's atomic model (1913)
-• Heisenberg's uncertainty principle (1927)
-• Schrödinger's wave equation (1926)`,
-
-    23: `Wave-Particle Duality
-
-Wave-particle duality is a fundamental concept in quantum mechanics 
-that describes how quantum entities exhibit both wave-like and 
-particle-like properties depending on the experimental setup.
-
-Key Experiments:
-• Double-slit experiment with electrons
-• Photoelectric effect
-• Compton scattering
-
-The wave-particle duality principle shows that:
-• Light can behave as both waves and particles (photons)
-• Matter particles (like electrons) can exhibit wave properties
-• The measurement process affects the observed behavior
-
-This duality is central to understanding quantum mechanics and 
-has profound implications for our understanding of reality at 
-the quantum level.`
+// Configure PDF.js worker for react-pdf
+if (typeof window !== 'undefined') {
+  // Try CDN first, fallback to local worker
+  try {
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@5.3.93/build/pdf.worker.min.mjs`;
+  } catch {
+    // Fallback to local worker if CDN fails
+    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
   }
-};
+}
+
+// Types for react-pdf
+interface PDFPageDimensions {
+  width: number;
+  height: number;
+}
 
 interface PDFViewerProps {
   document: Document;
@@ -126,7 +52,10 @@ export default function PDFViewer({
 }: PDFViewerProps) {
   const [scale, setScale] = useState(1.0);
   const [rotation, setRotation] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pageDimensions, setPageDimensions] = useState<PDFPageDimensions>({ width: 600, height: 800 });
 
   const handlePreviousPage = () => {
     if (currentPage > 1) {
@@ -135,7 +64,7 @@ export default function PDFViewer({
   };
 
   const handleNextPage = () => {
-    if (currentPage < document.pageCount) {
+    if (numPages && currentPage < numPages) {
       onPageChange(currentPage + 1);
     }
   };
@@ -157,21 +86,49 @@ export default function PDFViewer({
   };
 
   const handleDownload = () => {
-    // Mock download functionality
-    const link = document.createElement('a');
-    link.href = '#';
-    link.download = document.filename;
-    link.click();
+    if (document.fileUrl) {
+      const link = document.createElement('a');
+      link.href = document.fileUrl;
+      link.download = document.originalName || document.filename;
+      link.target = '_blank';
+      link.click();
+    }
   };
 
-  // Get current page content
-  const currentPageContent = mockPDFPages[document.id]?.[currentPage] || 
-    `Page ${currentPage} content would be displayed here.\n\nThis is a mock PDF viewer showing the structure and layout of the actual PDF content.`;
+  // Handle PDF document load success
+  const onDocumentLoadSuccess = useCallback(({ numPages: totalPages }: { numPages: number }) => {
+    console.log('PDF loaded successfully with', totalPages, 'pages');
+    setNumPages(totalPages);
+    setIsLoading(false);
+    setError(null);
+  }, []);
+
+  // Handle PDF document load error
+  const onDocumentLoadError = useCallback((error: Error) => {
+    console.error('Error loading PDF:', error);
+    setError(`Failed to load PDF: ${error.message}`);
+    setIsLoading(false);
+  }, []);
+
+  // Handle page load success
+  const onPageLoadSuccess = useCallback((page: any) => {
+    const viewport = page.getViewport({ scale: 1.0 });
+    setPageDimensions({
+      width: viewport.width,
+      height: viewport.height
+    });
+  }, []);
 
   // Filter annotations for current page
   const currentPageAnnotations = annotations.filter(
     annotation => annotation.pageNumber === currentPage
   );
+
+  // PDF loading options with correct version - memoized to prevent unnecessary reloads
+  const pdfOptions = useMemo(() => ({
+    cMapUrl: 'https://unpkg.com/pdfjs-dist@5.3.93/cmaps/',
+    cMapPacked: true,
+  }), []);
 
   return (
     <div className="flex flex-col h-full bg-gray-100">
@@ -189,72 +146,45 @@ export default function PDFViewer({
               <ChevronLeft className="h-4 w-4" />
             </Button>
             
-            <span className="text-sm text-gray-600 min-w-[80px] text-center">
-              Page {currentPage} of {document.pageCount}
+            <span className="text-sm text-gray-600">
+              Page {currentPage} of {numPages || document.pageCount || '?'}
             </span>
             
             <Button
               variant="outline"
               size="sm"
               onClick={handleNextPage}
-              disabled={currentPage >= document.pageCount}
+              disabled={currentPage >= (numPages || document.pageCount || 1)}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
 
-          <Separator orientation="vertical" className="h-6" />
-
           {/* Zoom Controls */}
           <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleZoomOut}
-              disabled={scale <= 0.5}
-            >
+            <Button variant="outline" size="sm" onClick={handleZoomOut}>
               <ZoomOut className="h-4 w-4" />
             </Button>
             
-            <span className="text-sm text-gray-600 min-w-[50px] text-center">
+            <span className="text-sm text-gray-600 min-w-[4rem] text-center">
               {Math.round(scale * 100)}%
             </span>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleZoomIn}
-              disabled={scale >= 3.0}
-            >
+            <Button variant="outline" size="sm" onClick={handleZoomIn}>
               <ZoomIn className="h-4 w-4" />
             </Button>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleFitToWidth}
-            >
-              <Maximize className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <Separator orientation="vertical" className="h-6" />
-
-          {/* Additional Controls */}
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRotate}
-            >
+            <Separator orientation="vertical" className="h-6" />
+            
+            <Button variant="outline" size="sm" onClick={handleRotate}>
               <RotateCw className="h-4 w-4" />
             </Button>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-            >
+            <Button variant="outline" size="sm" onClick={handleFitToWidth}>
+              <Maximize className="h-4 w-4" />
+            </Button>
+            
+            <Button variant="outline" size="sm" onClick={handleDownload}>
               <Download className="h-4 w-4" />
             </Button>
           </div>
@@ -265,55 +195,90 @@ export default function PDFViewer({
       <div className="flex-1 relative overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-8 flex justify-center">
-            <div 
-              className="relative bg-white shadow-lg border border-gray-300"
-              style={{
-                transform: `scale(${scale}) rotate(${rotation}deg)`,
-                transformOrigin: 'center top',
-                transition: 'transform 0.2s ease-in-out'
-              }}
-            >
-              {/* Mock PDF Page */}
-              <div className="w-[600px] min-h-[800px] p-8 relative">
-                {/* Page Header */}
-                <div className="flex items-center justify-between mb-6 pb-2 border-b border-gray-200">
-                  <div className="flex items-center space-x-2">
-                    <FileText className="h-4 w-4 text-gray-400" />
-                    <span className="text-xs text-gray-500">{document.title}</span>
-                  </div>
-                  <span className="text-xs text-gray-500">Page {currentPage}</span>
-                </div>
-
-                {/* Page Content */}
-                <div className="prose prose-sm max-w-none">
-                  {currentPageContent.split('\n').map((line, index) => (
-                    <p key={index} className="mb-2 leading-relaxed text-gray-800">
-                      {line || '\u00A0'}
-                    </p>
-                  ))}
-                </div>
-
-                {/* Annotations Overlay */}
-                <PDFAnnotations
-                  annotations={currentPageAnnotations}
-                  pageNumber={currentPage}
-                  pdfDimensions={{ width: 600, height: 800 }}
-                  scale={scale}
-                />
+            {/* Error State */}
+            {error && (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to Load PDF</h3>
+                <p className="text-gray-600 mb-4">{error}</p>
+                <Button onClick={() => window.location.reload()}>
+                  Try Again
+                </Button>
               </div>
-            </div>
+            )}
+
+            {/* Loading State */}
+            {isLoading && !error && (
+              <div className="flex flex-col items-center justify-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
+                <p className="text-gray-600">Loading PDF...</p>
+              </div>
+            )}
+
+            {/* PDF Document */}
+            {!error && document.fileUrl && (
+              <div 
+                className="relative"
+                style={{
+                  transform: `scale(${scale}) rotate(${rotation}deg)`,
+                  transformOrigin: 'center top',
+                  transition: 'transform 0.2s ease-in-out'
+                }}
+              >
+                <PDFDocument
+                  file={document.fileUrl}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  onLoadError={onDocumentLoadError}
+                  loading={
+                    <div className="flex items-center justify-center h-64">
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                    </div>
+                  }
+                  options={pdfOptions}
+                >
+                  <div className="relative bg-white shadow-lg border border-gray-300">
+                    <Page
+                      pageNumber={currentPage}
+                      onLoadSuccess={onPageLoadSuccess}
+                      loading={
+                        <div className="flex items-center justify-center h-96 w-96">
+                          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                        </div>
+                      }
+                      error={
+                        <div className="flex items-center justify-center h-96 w-96 bg-gray-50">
+                          <div className="text-center">
+                            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                            <p className="text-gray-600">Failed to load page</p>
+                          </div>
+                        </div>
+                      }
+                    />
+                    
+                    {/* Annotations Overlay */}
+                    <div className="absolute inset-0 pointer-events-none">
+                      <PDFAnnotations
+                        annotations={currentPageAnnotations}
+                        pageNumber={currentPage}
+                        pdfDimensions={pageDimensions}
+                        scale={1.0} // Pass 1.0 since scaling is handled by parent
+                      />
+                    </div>
+                  </div>
+                </PDFDocument>
+              </div>
+            )}
+
+            {/* No PDF URL */}
+            {!document.fileUrl && !isLoading && (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <FileText className="h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No PDF Available</h3>
+                <p className="text-gray-600">This document doesn't have a valid PDF file.</p>
+              </div>
+            )}
           </div>
         </ScrollArea>
-
-        {/* Loading Overlay */}
-        {isLoading && (
-          <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-              <p className="text-sm text-gray-600">Loading page...</p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

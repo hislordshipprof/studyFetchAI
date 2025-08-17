@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
+import { Document, DocumentUploadResponse } from "@/types/pdf";
 
 interface FileUploadProps {
-  onUploadComplete?: (document: any) => void;
+  onUploadComplete?: (document: Document) => void;
   onUploadStart?: () => void;
   className?: string;
 }
@@ -54,41 +55,70 @@ export default function FileUpload({ onUploadComplete, onUploadStart, className 
     onUploadStart?.();
 
     try {
-      // Simulate upload progress
-      const interval = setInterval(() => {
-        setUploadState(prev => {
-          if (prev.progress >= 90) {
-            clearInterval(interval);
-            return prev;
-          }
-          return { ...prev, progress: prev.progress + 10 };
-        });
-      }, 200);
-
-      // TODO: Replace with actual upload logic
+      // Prepare form data for upload
       const formData = new FormData();
       formData.append("file", file);
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create XMLHttpRequest for progress tracking
+      const xhr = new XMLHttpRequest();
+      
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          setUploadState(prev => ({ ...prev, progress: Math.round(percentComplete) }));
+        }
+      });
 
-      // Mock successful response
-      const mockDocument = {
-        id: `doc_${Date.now()}`,
-        title: file.name.replace(".pdf", ""),
-        filename: file.name,
-        originalName: file.name,
-        pageCount: Math.floor(Math.random() * 50) + 10,
-        fileSize: file.size,
-        uploadedAt: new Date(),
-        lastAccessedAt: new Date(),
+      // Handle upload completion
+      const uploadPromise = new Promise<DocumentUploadResponse>((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status === 201) {
+            try {
+              const response = JSON.parse(xhr.responseText) as DocumentUploadResponse;
+              resolve(response);
+            } catch (parseError) {
+              reject(new Error('Invalid response format'));
+            }
+          } else {
+            try {
+              const errorResponse = JSON.parse(xhr.responseText);
+              reject(new Error(errorResponse.error?.message || 'Upload failed'));
+            } catch {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.ontimeout = () => reject(new Error('Upload timeout'));
+      });
+
+      // Set timeout and send request
+      xhr.timeout = 60000; // 60 seconds timeout
+      xhr.open('POST', '/api/documents/upload');
+      xhr.send(formData);
+
+      // Wait for upload to complete
+      const response = await uploadPromise;
+
+      // Transform API response to Document format for dashboard
+      const uploadedDocument: Document = {
+        id: response.data.id,
+        title: response.data.title,
+        filename: response.data.filename,
+        originalName: response.data.originalName,
+        fileUrl: response.data.fileUrl,
+        fileSize: response.data.fileSize,
+        mimeType: 'application/pdf',
+        pageCount: response.data.pageCount,
+        uploadedAt: response.data.uploadedAt,
+        lastAccessedAt: response.data.uploadedAt,
         conversationCount: 0,
         hasActiveConversation: false,
-        lastViewedPage: null,
         lastMessageAt: null,
       };
 
-      clearInterval(interval);
       setUploadState({
         isUploading: false,
         progress: 100,
@@ -96,7 +126,7 @@ export default function FileUpload({ onUploadComplete, onUploadStart, className 
         success: true,
       });
 
-      onUploadComplete?.(mockDocument);
+      onUploadComplete?.(uploadedDocument);
 
       // Reset after success
       setTimeout(() => {
@@ -106,13 +136,14 @@ export default function FileUpload({ onUploadComplete, onUploadStart, className 
           error: null,
           success: false,
         });
-      }, 2000);
+      }, 3000);
 
     } catch (error) {
+      console.error('Upload error:', error);
       setUploadState({
         isUploading: false,
         progress: 0,
-        error: "Upload failed. Please try again.",
+        error: error instanceof Error ? error.message : "Upload failed. Please try again.",
         success: false,
       });
     }

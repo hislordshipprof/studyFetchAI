@@ -10,7 +10,7 @@ import { deletePDFFromBlob } from '@/lib/blob-storage';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -22,7 +22,7 @@ export async function GET(
       );
     }
 
-    const documentId = params.id;
+    const { id: documentId } = await params;
 
     // Fetch document with conversations and chunks
     const document = await prisma.document.findFirst({
@@ -31,17 +31,17 @@ export async function GET(
         userId: session.user.id, // Ensure user owns the document
       },
       include: {
-        conversations: {
-                  include: {
-          messages: {
-            orderBy: {
-              createdAt: 'asc',
+                conversations: {
+          include: {
+            messages: {
+              orderBy: {
+                timestamp: 'asc',
+              },
             },
           },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+          orderBy: {
+            createdAt: 'desc',
+          },
         },
         documentChunks: {
           orderBy: {
@@ -83,7 +83,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -95,7 +95,7 @@ export async function PUT(
       );
     }
 
-    const documentId = params.id;
+    const { id: documentId } = await params;
     const body = await request.json();
     const { title, pageCount } = body;
 
@@ -145,7 +145,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -157,7 +157,7 @@ export async function DELETE(
       );
     }
 
-    const documentId = params.id;
+    const { id: documentId } = await params;
 
     // Verify document ownership and get file URL
     const document = await prisma.document.findFirst({

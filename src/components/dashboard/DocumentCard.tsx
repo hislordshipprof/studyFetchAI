@@ -5,21 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, MessageSquare, Clock, BookOpen, Trash2 } from "lucide-react";
+import { Document } from "@/types/pdf";
 
 interface DocumentCardProps {
-  document: {
-    id: string;
-    title: string;
-    filename: string;
-    pageCount: number;
-    fileSize: number;
-    uploadedAt: Date;
-    lastAccessedAt?: Date;
-    conversationCount: number;
-    hasActiveConversation: boolean;
-    lastViewedPage?: number;
-    lastMessageAt?: Date;
-  };
+  document: Document;
   onDelete?: (documentId: string) => void;
 }
 
@@ -56,7 +45,7 @@ export default function DocumentCard({ document, onDelete }: DocumentCardProps) 
     if (document.hasActiveConversation) {
       return { status: "active", color: "bg-green-100 text-green-800", text: "Active Chat" };
     }
-    if (document.conversationCount > 0) {
+    if ((document.conversationCount || 0) > 0) {
       return { status: "history", color: "bg-blue-100 text-blue-800", text: "Has History" };
     }
     return { status: "new", color: "bg-gray-100 text-gray-800", text: "New" };
@@ -100,12 +89,12 @@ export default function DocumentCard({ document, onDelete }: DocumentCardProps) 
       
       <CardContent className="space-y-4">
         {/* Conversation Status */}
-        {document.conversationCount > 0 && (
+        {(document.conversationCount || 0) > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-1 text-gray-600">
                 <MessageSquare className="h-4 w-4" />
-                <span>{document.conversationCount} conversation{document.conversationCount > 1 ? "s" : ""}</span>
+                <span>{document.conversationCount || 0} conversation{(document.conversationCount || 0) > 1 ? "s" : ""}</span>
               </div>
               {document.lastMessageAt && (
                 <div className="flex items-center gap-1 text-gray-500">
@@ -143,7 +132,7 @@ export default function DocumentCard({ document, onDelete }: DocumentCardProps) 
                 Continue Chat
               </Button>
             </Link>
-          ) : document.conversationCount > 0 ? (
+          ) : (document.conversationCount || 0) > 0 ? (
             <Link href={`/tutor/${document.id}`} className="flex-1">
               <Button className="w-full" variant="outline">
                 <BookOpen className="mr-2 h-4 w-4" />
