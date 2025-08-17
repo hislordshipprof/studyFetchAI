@@ -4,32 +4,28 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import useSWR, { mutate } from "swr";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import FileUpload from "@/components/upload/FileUpload";
 import DocumentCard from "@/components/dashboard/DocumentCard";
-import { Search, Filter, BookOpen, MessageSquare, FileText } from "lucide-react";
+import { Search, Filter, BookOpen, MessageSquare, FileText, Loader2 } from "lucide-react";
+import { Document, DocumentsListResponse } from "@/types/pdf";
 
-interface Document {
-  id: string;
-  title: string;
-  filename: string;
-  pageCount: number;
-  fileSize: number;
-  uploadedAt: Date;
-  lastAccessedAt?: Date;
-  conversationCount: number;
-  hasActiveConversation: boolean;
-  lastViewedPage?: number;
-  lastMessageAt?: Date;
-}
+// API fetcher function
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Failed to fetch documents');
+  }
+  return response.json();
+};
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [documents, setDocuments] = useState<Document[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "history" | "new">("all");
 
@@ -40,47 +36,43 @@ export default function DashboardPage() {
     }
   }, [status, router]);
 
-  // Mock data to show the enhanced features
-  useEffect(() => {
-    // Simulate loading existing documents with conversation history
-    const mockDocuments: Document[] = [
-      {
-        id: "doc_1",
-        title: "Biology Textbook Chapter 5",
-        filename: "biology-chapter-5.pdf",
-        pageCount: 24,
-        fileSize: 2450000,
-        uploadedAt: new Date("2024-01-14"),
-        lastAccessedAt: new Date("2024-01-15"),
-        conversationCount: 12,
-        hasActiveConversation: true,
-        lastViewedPage: 18,
-        lastMessageAt: new Date("2024-01-15T14:30:00"),
-      },
-      {
-        id: "doc_2",
-        title: "Physics - Quantum Mechanics",
-        filename: "quantum-mechanics.pdf",
-        pageCount: 45,
-        fileSize: 5200000,
-        uploadedAt: new Date("2024-01-09"),
-        lastAccessedAt: new Date("2024-01-10"),
-        conversationCount: 8,
-        hasActiveConversation: false,
-        lastViewedPage: 23,
-        lastMessageAt: new Date("2024-01-10T16:45:00"),
-      }
-    ];
-    setDocuments(mockDocuments);
-  }, []);
+  // Build API URL with search parameters
+  const apiUrl = `/api/documents${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''}`;
+  
+  // Fetch documents from API
+  const { data: documentsResponse, error, isLoading, mutate: refreshDocuments } = useSWR<DocumentsListResponse>(
+    status === "authenticated" ? apiUrl : null,
+    fetcher,
+    {
+      refreshInterval: 0, // Don't auto-refresh
+      revalidateOnFocus: true,
+    }
+  );
+
+  const documents = documentsResponse?.data || [];
 
   const handleUploadComplete = (newDocument: Document) => {
-    setDocuments(prev => [newDocument, ...prev]);
+    // Refresh the documents list after successful upload
+    refreshDocuments();
   };
 
-  const handleDeleteDocument = (documentId: string) => {
+  const handleDeleteDocument = async (documentId: string) => {
     if (confirm("Are you sure you want to delete this document? This will also delete all conversation history.")) {
-      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+      try {
+        const response = await fetch(`/api/documents/${documentId}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          // Refresh the documents list after successful deletion
+          refreshDocuments();
+        } else {
+          throw new Error('Failed to delete document');
+        }
+      } catch (error) {
+        console.error('Error deleting document:', error);
+        alert('Failed to delete document. Please try again.');
+      }
     }
   };
 
@@ -94,9 +86,9 @@ export default function DashboardPage() {
       case "active":
         return doc.hasActiveConversation;
       case "history":
-        return doc.conversationCount > 0 && !doc.hasActiveConversation;
+        return (doc.conversationCount || 0) > 0 && !doc.hasActiveConversation;
       case "new":
-        return doc.conversationCount === 0;
+        return (doc.conversationCount || 0) === 0;
       default:
         return true;
     }
@@ -105,8 +97,8 @@ export default function DashboardPage() {
   const getStats = () => {
     const total = documents.length;
     const active = documents.filter(d => d.hasActiveConversation).length;
-    const withHistory = documents.filter(d => d.conversationCount > 0).length;
-    const totalConversations = documents.reduce((sum, d) => sum + d.conversationCount, 0);
+    const withHistory = documents.filter(d => (d.conversationCount || 0) > 0).length;
+    const totalConversations = documents.reduce((sum, d) => sum + (d.conversationCount || 0), 0);
 
     return { total, active, withHistory, totalConversations };
   };
@@ -128,6 +120,19 @@ export default function DashboardPage() {
   // Don't render anything if not authenticated (will redirect)
   if (!session) {
     return null;
+  }
+
+  // Show error state if API request failed
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-xl mb-4">Failed to load documents</div>
+          <p className="text-gray-600 mb-4">There was an error loading your documents.</p>
+          <Button onClick={() => refreshDocuments()}>Try Again</Button>
+        </div>
+      </div>
+    );
   }
 
   const handleSignOut = async () => {
@@ -274,7 +279,14 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {filteredDocuments.length === 0 ? (
+          {isLoading ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <Loader2 className="mx-auto h-8 w-8 text-blue-600 animate-spin mb-4" />
+                <p className="text-gray-600">Loading your documents...</p>
+              </CardContent>
+            </Card>
+          ) : filteredDocuments.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
                 {documents.length === 0 ? (

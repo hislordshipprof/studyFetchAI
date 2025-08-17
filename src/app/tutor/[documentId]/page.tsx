@@ -2,48 +2,34 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileText, MessageSquare } from "lucide-react";
 import SplitScreen from "@/components/layout/SplitScreen";
-import PDFViewer from "@/components/pdf/PDFViewer";
 import ChatInterface from "@/components/chat/ChatInterface";
-import type { Document, Message, Annotation } from "@/types/pdf";
+import type { Document, Annotation } from "@/types/pdf";
+import type { Message } from "@/types/chat";
 
-// Mock document data
-const mockDocuments: Record<string, Document> = {
-  "doc_1": {
-    id: "doc_1",
-    title: "Biology Textbook Chapter 5",
-    filename: "biology-chapter-5.pdf",
-    originalName: "biology-chapter-5.pdf",
-    pageCount: 24,
-    fileSize: 2450000,
-    fileUrl: "/mock-pdfs/biology.pdf",
-    uploadedAt: new Date("2024-01-14"),
-    lastAccessedAt: new Date("2024-01-15"),
-    userId: "user_1",
-    mimeType: "application/pdf",
-    textContent: "Sample biology textbook content..."
-  },
-  "doc_2": {
-    id: "doc_2",
-    title: "Physics - Quantum Mechanics",
-    filename: "quantum-mechanics.pdf",
-    originalName: "quantum-mechanics.pdf",
-    pageCount: 45,
-    fileSize: 5200000,
-    fileUrl: "/mock-pdfs/physics.pdf",
-    uploadedAt: new Date("2024-01-09"),
-    lastAccessedAt: new Date("2024-01-10"),
-    userId: "user_1",
-    mimeType: "application/pdf",
-    textContent: "Sample physics textbook content..."
-  }
-};
+// Dynamic import to avoid SSR issues with DOMMatrix
+const PDFViewer = dynamic(() => import("@/components/pdf/PDFViewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  ),
+});
+
+// API response type for individual document
+interface DocumentResponse {
+  data: Document;
+}
 
 export default function TutorPage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session, status } = useSession();
   const documentId = params.documentId as string;
   
   const [document, setDocument] = useState<Document | null>(null);
@@ -53,25 +39,60 @@ export default function TutorPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load document data
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+
+  // Load document data from API
   useEffect(() => {
     const loadDocument = async () => {
+      // Don't load if not authenticated yet
+      if (status !== "authenticated") {
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
       try {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Fetch document from API
+        const response = await fetch(`/api/documents/${documentId}`);
         
-        const foundDocument = mockDocuments[documentId];
-        if (!foundDocument) {
-          setError("Document not found");
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError("Document not found");
+          } else if (response.status === 401) {
+            setError("Authentication required");
+            router.push("/login");
+          } else {
+            setError("Failed to load document");
+          }
           return;
         }
 
-        setDocument(foundDocument);
+        const documentResponse: DocumentResponse = await response.json();
+        setDocument(documentResponse.data);
         
-        // Load conversation history if it exists
+        // Update last accessed time
+        try {
+          await fetch(`/api/documents/${documentId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              // Just update lastAccessedAt by calling the API
+            }),
+          });
+        } catch (updateError) {
+          // Non-critical error, don't show to user
+          console.warn("Failed to update last accessed time:", updateError);
+        }
+        
+        // Load conversation history from localStorage (for now)
         const savedMessages = localStorage.getItem(`conversation_${documentId}`);
         if (savedMessages) {
           const parsedMessages = JSON.parse(savedMessages);
@@ -83,7 +104,7 @@ export default function TutorPage() {
           setMessages(messagesWithDates);
         }
         
-        // Load last viewed page
+        // Load last viewed page from localStorage
         const savedPage = localStorage.getItem(`lastPage_${documentId}`);
         if (savedPage) {
           setCurrentPage(parseInt(savedPage, 10));
@@ -100,7 +121,7 @@ export default function TutorPage() {
     if (documentId) {
       loadDocument();
     }
-  }, [documentId]);
+  }, [documentId, status, router]);
 
   // Save current page when it changes
   useEffect(() => {
@@ -134,17 +155,26 @@ export default function TutorPage() {
     setAnnotations(prev => [...prev, ...newAnnotations]);
   };
 
-  if (isLoading) {
+  // Show loading state while checking authentication or loading document
+  if (status === "loading" || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading document...</p>
+          <p className="text-gray-600">
+            {status === "loading" ? "Checking authentication..." : "Loading document..."}
+          </p>
         </div>
       </div>
     );
   }
 
+  // Don't render anything if not authenticated (will redirect)
+  if (!session) {
+    return null;
+  }
+
+  // Show error state
   if (error || !document) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

@@ -8,9 +8,33 @@ export interface Document {
   mimeType: string;
   pageCount: number;
   textContent?: string;
-  uploadedAt: Date;
-  lastAccessedAt: Date;
-  userId: string;
+  uploadedAt: Date | string;
+  lastAccessedAt: Date | string;
+  userId?: string; // Optional for frontend display
+  
+  // Additional fields from API responses
+  conversationCount?: number;
+  lastMessageAt?: Date | string | null;
+  hasActiveConversation?: boolean;
+}
+
+// Upload response from API
+export interface DocumentUploadResponse {
+  data: {
+    id: string;
+    title: string;
+    filename: string;
+    originalName: string;
+    fileUrl: string;
+    fileSize: number;
+    pageCount: number;
+    uploadedAt: Date | string;
+  };
+}
+
+// Documents list response from API
+export interface DocumentsListResponse {
+  data: Document[];
 }
 
 export interface DocumentChunk {
