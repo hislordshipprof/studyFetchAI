@@ -6,6 +6,8 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: ['localhost:3000'],
     },
+    // Keep MuPDF.js as external package for server-side use only
+    serverComponentsExternalPackages: ['mupdf'],
   },
 
   // Turbopack configuration (instead of webpack for development)
@@ -22,6 +24,8 @@ const nextConfig = {
       crypto: false,
       stream: false,
       util: false,
+      module: false, // Fix for MuPDF.js
+      url: false,
     },
   },
 
@@ -40,7 +44,7 @@ const nextConfig = {
         });
       }
 
-      // Handle Node.js modules in the browser
+      // Handle Node.js modules in the browser - comprehensive fallbacks for MuPDF.js
       if (!isServer) {
         config.resolve.fallback = {
           ...config.resolve.fallback,
@@ -50,8 +54,31 @@ const nextConfig = {
           stream: false,
           util: false,
           buffer: false,
+          module: false, // Fix for MuPDF.js "Can't resolve 'module'" error
+          url: false,
+          os: false,
+          assert: false,
+          constants: false,
+          child_process: false,
+          worker_threads: false,
+          perf_hooks: false,
+          async_hooks: false,
         };
+
+        // Ignore MuPDF.js completely on client side
+        config.externals = config.externals || [];
+        config.externals.push({
+          'mupdf': 'mupdf',
+        });
       }
+
+      // Handle WebAssembly files for MuPDF.js
+      config.experiments = {
+        ...config.experiments,
+        asyncWebAssembly: true,
+        syncWebAssembly: true,
+        layers: true,
+      };
 
       // Add specific handling for pdf-parse
       config.module.rules.push({

@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,115 +8,104 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            String         @id @default(cuid())
+  email         String         @unique
   passwordHash  String
   name          String?
   avatar        String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  documents     Document[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   conversations Conversation[]
-  
+  documents     Document[]
+
   @@map("users")
 }
 
 model Document {
-  id           String    @id @default(cuid())
-  title        String
-  filename     String
-  originalName String
-  fileUrl      String
-  fileSize     Int
-  mimeType     String
-  pageCount    Int
-  textContent  String?   @db.Text
-  uploadedAt   DateTime  @default(now())
-  lastAccessedAt DateTime @default(now())
-  
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  conversations Conversation[]
-  annotations   Annotation[]
+  id             String          @id @default(cuid())
+  title          String
+  filename       String
+  originalName   String
+  fileUrl        String
+  fileSize       Int
+  mimeType       String
+  pageCount      Int
+  textContent    String?
+  chunks         Json?
+  vectorStore    Json?
+  uploadedAt     DateTime        @default(now())
+  lastAccessedAt DateTime        @default(now())
+  userId         String
+  annotations    Annotation[]
+  conversations  Conversation[]
   documentChunks DocumentChunk[]
-  
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("documents")
 }
 
 model DocumentChunk {
   id         String   @id @default(cuid())
   pageNumber Int
-  content    String   @db.Text
+  content    String
   createdAt  DateTime @default(now())
-  
   documentId String
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
+
   @@map("document_chunks")
 }
 
 model Conversation {
-  id           String    @id @default(cuid())
-  title        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  lastMessageAt DateTime @default(now())
-  
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  documentId   String
-  document     Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
-  messages     Message[]
-  
+  id            String    @id @default(cuid())
+  title         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastMessageAt DateTime  @default(now())
+  userId        String
+  documentId    String
+  document      Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages      Message[]
+
   @@map("conversations")
 }
 
 model Message {
-  id             String       @id @default(cuid())
-  content        String       @db.Text
+  id             String              @id @default(cuid())
+  content        String
   role           MessageRole
-  metadata       Json?        // For storing additional AI response data
-  timestamp      DateTime     @default(now())
-  
+  metadata       Json?
+  timestamp      DateTime            @default(now())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
   annotations    MessageAnnotation[]
-  
+  conversation   Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
   @@map("messages")
 }
 
 model Annotation {
-  id          String        @id @default(cuid())
-  type        AnnotationType
-  pageNumber  Int
-  coordinates Json          // {x, y, width, height, points}
-  content     String?
-  color       String        @default("#ffff00")
-  opacity     Float         @default(0.3)
-  createdAt   DateTime      @default(now())
-  
-  documentId  String
-  document    Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
+  id                 String              @id @default(cuid())
+  type               AnnotationType
+  pageNumber         Int
+  coordinates        Json
+  content            String?
+  color              String              @default("#ffff00")
+  opacity            Float               @default(0.3)
+  createdAt          DateTime            @default(now())
+  documentId         String
+  document           Document            @relation(fields: [documentId], references: [id], onDelete: Cascade)
   messageAnnotations MessageAnnotation[]
-  
+
   @@map("annotations")
 }
 
 model MessageAnnotation {
   id           String     @id @default(cuid())
-  
   messageId    String
-  message      Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  
   annotationId String
   annotation   Annotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
-  
+  message      Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
   @@unique([messageId, annotationId])
   @@map("message_annotations")
 }

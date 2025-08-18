@@ -18,60 +18,34 @@ import {
 } from "lucide-react";
 import type { Document, Annotation } from "@/types/pdf";
 import type { Message } from "@/types/chat";
+import { generateHighlightAnnotations } from "@/lib/pdf-annotations";
 
-// Mock AI responses with annotation instructions
-const mockAIResponses: Record<string, any> = {
-  "what is a virus": {
-    text: "A virus is a microscopic infectious agent that can only replicate inside living cells. Let me show you the relevant section on page 5.",
-    annotations: [
-      {
-        id: "ann_1",
-        type: "HIGHLIGHT",
-        pageNumber: 5,
-        coordinates: { x: 50, y: 150, width: 400, height: 60 },
-        color: "rgba(255, 255, 0, 0.2)", // More transparent yellow
-        opacity: 0.2,
+// Helper function for fallback annotations when MuPDF document not loaded
+const generateBasicAnnotationsFromSources = async (sources: string[], sourceDocuments: any[]): Promise<Annotation[]> => {
+  const annotations: Annotation[] = [];
+  
+  // Extract page information from sourceDocuments (like Python version)
+  sourceDocuments.forEach((doc, index) => {
+    if (doc.metadata?.page) {
+      annotations.push({
+        id: `ann_${Date.now()}_${index}`,
+        type: "HIGHLIGHT" as const,
+        pageNumber: doc.metadata.page,
+        coordinates: { 
+          x: 50 + (index * 10), 
+          y: 150 + (index * 80), 
+          width: 400, 
+          height: 60 
+        },
+        color: "red", // Match chatapp.py color format
+        opacity: 0.15, // Light uniform opacity for better readability
         createdAt: new Date(),
-        documentId: "doc_1"
-      }
-    ],
-    navigateTo: 5,
-    delay: 2000
-  },
-  "virus structure": {
-    text: "Virus structure consists of genetic material surrounded by a protein coat called a capsid. I'll highlight this information for you.",
-    annotations: [
-      {
-        id: "ann_2", 
-        type: "CIRCLE",
-        pageNumber: 5,
-        coordinates: { x: 300, y: 400, radius: 50 },
-        color: "rgba(255, 0, 0, 0.7)", // Semi-transparent red
-        opacity: 0.7,
-        createdAt: new Date(),
-        documentId: "doc_1"
-      }
-    ],
-    navigateTo: 5,
-    delay: 1500
-  },
-  "replication cycle": {
-    text: "The viral replication cycle involves multiple stages. Let me take you to page 18 where this is explained in detail.",
-    annotations: [
-      {
-        id: "ann_3",
-        type: "HIGHLIGHT", 
-        pageNumber: 18,
-        coordinates: { x: 50, y: 200, width: 500, height: 100 },
-        color: "rgba(0, 255, 0, 0.2)", // Semi-transparent green
-        opacity: 0.2,
-        createdAt: new Date(),
-        documentId: "doc_1"
-      }
-    ],
-    navigateTo: 18,
-    delay: 2500
-  }
+        documentId: "current_doc"
+      });
+    }
+  });
+  
+  return annotations;
 };
 
 interface ChatInterfaceProps {
@@ -95,6 +69,7 @@ export default function ChatInterface({
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
+  const [currentSources, setCurrentSources] = useState<string[]>([]); // Store current AI sources
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const recognition = useRef<any>(null);
 
@@ -147,6 +122,7 @@ export default function ChatInterface({
     }
   }, []);
 
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -173,58 +149,76 @@ export default function ChatInterface({
     setInputValue("");
     setIsLoading(true);
 
-    // Simulate AI response
+    // Call real AI API - exact same as chatapp.py flow
     try {
-      // Find matching response with flexible matching
-      const normalizedInput = currentInput.toLowerCase().trim();
+      console.log('Sending message to AI:', currentInput);
       
-      const responseKey = Object.keys(mockAIResponses).find(key => {
-        const keyWords = key.split(' ');
-        // Check if input contains most key words (flexible matching)
-        const matchCount = keyWords.filter(word => 
-          normalizedInput.includes(word)
-        ).length;
-        const matchRatio = matchCount / keyWords.length;
-        return matchRatio >= 0.7; // 70% word match
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: currentInput, 
+          documentId: document.id 
+        })
       });
-      
-      const response = responseKey ? mockAIResponses[responseKey] : {
-        text: `I understand you're asking about "${currentInput}". Let me analyze the document to provide you with relevant information.`,
-        annotations: [],
-        navigateTo: null,
-        delay: 1500
-      };
 
-      // Simulate AI thinking time
-      await new Promise(resolve => setTimeout(resolve, response.delay));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
 
+      const result = await response.json();
+      console.log('AI response received:', result);
+
+      // Create AI message with the real response
       const aiMessage: Message = {
         id: `msg_${Date.now()}`,
-        content: response.text,
+        content: result.answer,
         role: 'ASSISTANT',
         timestamp: new Date(),
         conversationId: `conv_${document.id}`,
         metadata: {
-          annotations: response.annotations,
-          navigateTo: response.navigateTo
+          sources: result.sources,
+          sourceDocuments: result.sourceDocuments
         }
       };
 
       onSendMessage(aiMessage);
 
-      // Add annotations if any
-      if (response.annotations && response.annotations.length > 0) {
-        onAddAnnotations(response.annotations);
-      }
-
-      // Navigate to page if specified
-      if (response.navigateTo) {
-        onPageNavigation(response.navigateTo);
+      // Store sources and generate annotations (exact same as chatapp.py lines 248-273)
+      if (result.sources && result.sources.length > 0) {
+        // Update session state with new sources for highlighting (lines 248-249)
+        setCurrentSources(result.sources);
+        
+        console.log('Generating highlights for sources via server-side API:', result.sources);
+        
+        // Generate real text-based annotations using server-side MuPDF.js API (line 273)
+        // Exact same as chatapp.py: generate_highlight_annotations(doc, st.session_state.sources)
+        const annotations = await generateHighlightAnnotations(document.id, result.sources);
+        
+        if (annotations.length > 0) {
+          onAddAnnotations(annotations);
+          
+          // Navigate to first highlighted page (like chatapp.py)
+          const firstPage = annotations[0].pageNumber;
+          onPageNavigation(firstPage);
+          
+          console.log(`Generated ${annotations.length} highlights, navigating to page ${firstPage}`);
+        } else {
+          console.log('No text matches found for highlighting');
+          // Fallback to basic annotations from sourceDocuments if no text search results
+          const annotations = await generateBasicAnnotationsFromSources(result.sources, result.sourceDocuments);
+          onAddAnnotations(annotations);
+          
+          if (annotations.length > 0) {
+            onPageNavigation(annotations[0].pageNumber);
+          }
+        }
       }
 
       // Speak the response if TTS is enabled
       if (isSpeaking && 'speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(response.text);
+        const utterance = new SpeechSynthesisUtterance(result.answer);
         speechSynthesis.speak(utterance);
       }
 
@@ -233,7 +227,7 @@ export default function ChatInterface({
       
       const errorMessage: Message = {
         id: `msg_${Date.now()}`,
-        content: "I'm sorry, I encountered an error while processing your request. Please try again.",
+        content: `I'm sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
         role: 'ASSISTANT',
         timestamp: new Date(),
         conversationId: `conv_${document.id}`
@@ -321,23 +315,23 @@ export default function ChatInterface({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setInputValue("What is a virus?")}
+                  onClick={() => setInputValue(`What are the main topics covered in ${document.title}?`)}
                 >
-                  What is a virus?
+                  Main topics in {document.title}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setInputValue("Explain virus structure")}
+                  onClick={() => setInputValue(`Can you summarize the key concepts from this document?`)}
                 >
-                  Explain virus structure
+                  Summarize key concepts
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setInputValue("How does replication work?")}
+                  onClick={() => setInputValue(`Explain the most important information in ${document.title}`)}
                 >
-                  How does replication work?
+                  Most important info
                 </Button>
               </div>
             </div>
@@ -364,6 +358,13 @@ export default function ChatInterface({
                       : 'bg-gray-100 text-gray-900'
                   }`}>
                     <p className="text-sm leading-relaxed">{message.content}</p>
+                    {message.metadata?.sources && message.metadata.sources.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <p className="text-xs text-blue-600 font-medium">
+                          📄 Found {message.metadata.sources.length} source(s) in document
+                        </p>
+                      </div>
+                    )}
                     {message.metadata?.navigateTo && (
                       <div className="mt-2 pt-2 border-t border-gray-200">
                         <p className="text-xs opacity-75">

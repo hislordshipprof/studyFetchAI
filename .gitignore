@@ -41,6 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+prisma
+prisma-schema.prisma
+logs.md
 
 # Project-specific ignores
 /scripts
