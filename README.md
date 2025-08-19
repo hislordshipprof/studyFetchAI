@@ -151,7 +151,7 @@ See `.env.example` for all required environment variables:
 
 ## Contributing
 
-This is a technical assessment project for StudyFetch. For any questions, contact marelle@studyfetch.com.
+This is a technical assessment project for StudyFetch. For any questions, contact me at beagyekum21@gmail.com
 
 ## License
 
