@@ -32,7 +32,7 @@ An AI-powered PDF tutor that helps students understand documents through interac
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/hislordshipprof/studyFetchAI
 cd studyfetch
 ```
 
@@ -159,8 +159,5 @@ Private - StudyFetch Technical Assessment
 
 ## Demo
 
-[Live Demo URL] - Will be added upon deployment
+[[Live Demo URL](https://study-fetch-ai.vercel.app/)] - Will be added upon deployment
 
-## Support
-
-For issues or questions about this assessment, please contact marelle@studyfetch.com
