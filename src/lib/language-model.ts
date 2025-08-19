@@ -1,13 +1,10 @@
 import { ChatOpenAI } from "@langchain/openai";
 
-/**
- * Initialize OpenAI ChatGPT model
- * Exact replication of lines 83-89 from chatapp.py
- */
+//Initialize OpenAI ChatGPT model
 export function initializeLanguageModel() {
   return new ChatOpenAI({
-    temperature: 0,              // Exact same as line 86
-    model: "gpt-4",             // Exact same as line 87
+    temperature: 0,              
+    model: "gpt-4",            
     apiKey: process.env.OPENAI_API_KEY!
   });
 }

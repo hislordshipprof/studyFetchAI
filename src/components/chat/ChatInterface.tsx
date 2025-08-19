@@ -38,8 +38,8 @@ const generateBasicAnnotationsFromSources = async (sources: string[], sourceDocu
           width: 400, 
           height: 60 
         },
-        color: "red", // Match chatapp.py color format
-        opacity: 0.15, // Light uniform opacity for better readability
+        color: "red",
+        opacity: 0.15, 
         createdAt: new Date(),
         documentId: "current_doc"
       });
@@ -150,7 +150,7 @@ export default function ChatInterface({
     setInputValue("");
     setIsLoading(true);
 
-    // Call real AI API - exact same as chatapp.py flow
+    // Call real AI API 
     try {
       console.log('Sending message to AI:', currentInput);
       
@@ -171,18 +171,18 @@ export default function ChatInterface({
       const result = await response.json();
       console.log('AI response received:', result);
 
-      // Store sources and generate annotations FIRST (exact same as chatapp.py lines 248-273)
+      // Store sources and generate annotations FIRST 
       let finalAiResponse = result.answer;
       let finalPageMappings: Array<{excerpt: string, pages: number[]}> = [];
       
       if (result.sources && result.sources.length > 0) {
-        // Update session state with new sources for highlighting (lines 248-249)
+        // Update session state with new sources for highlighting 
         setCurrentSources(result.sources);
         
         console.log('Generating highlights for sources via server-side API:', result.sources);
         
-        // Generate real text-based annotations using server-side MuPDF.js API (line 273)
-        // Exact same as chatapp.py: generate_highlight_annotations(doc, st.session_state.sources)
+        // Generate real text-based annotations using server-side MuPDF.js API 
+
         const highlightResult = await generateHighlightAnnotations(document.id, result.sources);
         
         if (highlightResult.annotations.length > 0) {
@@ -197,7 +197,7 @@ export default function ChatInterface({
           
           finalPageMappings = highlightResult.pageMappings;
           
-          // Navigate to first highlighted page (like chatapp.py)
+          // Navigate to first highlighted page
           const firstPage = highlightResult.annotations[0].pageNumber;
           onPageNavigation(firstPage);
           

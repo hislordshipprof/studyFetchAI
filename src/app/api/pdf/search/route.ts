@@ -11,7 +11,6 @@ export const runtime = 'nodejs';
 
 /**
  * PDF Text Search API using MuPDF.js server-side
- * Exact replication of chatapp.py lines 128-142 for text search and highlighting
  * POST /api/pdf/search
  */
 export async function POST(request: NextRequest) {
@@ -46,15 +45,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Loading PDF with MuPDF.js server-side...');
-    console.log('Using fuzzy search for excerpts:', excerpts);
+    // console.log('Loading PDF with MuPDF.js server-side...');
+    // console.log('Using fuzzy search for excerpts:', excerpts);
     
     // Fetch PDF content from storage
     const response = await fetch(document.fileUrl);
     const arrayBuffer = await response.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
 
-    // Load PDF with MuPDF.js (equivalent to fitz.open in chatapp.py line 183)
+    // Load PDF with MuPDF.js (
     const doc = mupdf.Document.openDocument(uint8Array, "application/pdf");
     console.log(`Loaded PDF document with ${doc.countPages()} pages`);
 
@@ -63,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Using enhanced exact search to find all sources...');
     
-    // Skip fuzzy search complexity and use enhanced exact search to find both sources
+
     
     // Enhanced exact search method - try multiple search strategies
     for (let pageNum = 0; pageNum < doc.countPages(); pageNum++) {
@@ -124,7 +123,7 @@ export async function POST(request: NextRequest) {
                 for (const quad of quadPoints) {
                   const [ulx, uly, urx, ury, llx, lly, lrx, lry] = quad;
                   
-                  // Better overlap detection - check if annotation overlaps with existing ones
+                  // Better overlap detection - 
                   const x = Math.min(ulx, llx);
                   const y = Math.min(uly, ury);
                   const width = Math.max(urx, lrx) - Math.min(ulx, llx);

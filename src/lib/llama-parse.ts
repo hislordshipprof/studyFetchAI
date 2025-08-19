@@ -4,10 +4,8 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 
-/**
- * Extract documents using LlamaParse for better PDF processing
- * Exact replication of chatapp.py lines 40-69 with correct API
- */
+//Extract documents using LlamaParse for better PDF processing
+
 export async function extractDocumentsWithLlamaParse(file: File) {
   // Create temporary file
   const tempDir = os.tmpdir();
@@ -19,16 +17,16 @@ export async function extractDocumentsWithLlamaParse(file: File) {
     const buffer = Buffer.from(arrayBuffer);
     fs.writeFileSync(tempFilePath, buffer);
     
-    // Initialize LlamaParseReader - exact same as chatapp.py lines 48-52
+    // Initialize LlamaParseReader 
     const reader = new LlamaParseReader({
-      resultType: "markdown", // Can be "markdown" or "text" - exact same as line 50
-      verbose: true           // Exact same as line 51
+      resultType: "markdown", 
+      verbose: true          
     });
     
-    // Parse the document - exact same as line 55
+    // Parse the document
     const documents = await reader.loadData(tempFilePath);
     
-    // Convert to LangChain documents for compatibility - exact same as lines 57-66
+    // Convert to LangChain documents for compatibility 
     const langchainDocs: Document[] = [];
     for (let i = 0; i < documents.length; i++) {
       const doc = documents[i];
@@ -42,7 +40,7 @@ export async function extractDocumentsWithLlamaParse(file: File) {
     return { langchainDocs, documents };
     
   } finally {
-    // Clean up temporary file - exact same as line 69
+    // Clean up temporary file
     if (fs.existsSync(tempFilePath)) {
       fs.unlinkSync(tempFilePath);
     }

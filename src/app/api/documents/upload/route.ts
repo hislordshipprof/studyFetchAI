@@ -6,8 +6,7 @@ import { extractDocumentsWithLlamaParse } from '@/lib/llama-parse';
 import { uploadPDFToBlob, validatePDFFile, generateStorageFilename } from '@/lib/blob-storage';
 
 /**
- * Upload a PDF document using LlamaParse ONLY (NO FALLBACKS)
- * Exact replication of chatapp.py lines 180-185
+ * Upload a PDF document using LlamaParse 
  * POST /api/documents/upload
  */
 export async function POST(request: NextRequest) {
@@ -64,15 +63,14 @@ export async function POST(request: NextRequest) {
     
     console.log('Processing file with LlamaParse...');
     
-    // EXACT replication of chatapp.py lines 180-185 - LlamaParse ONLY
     const { langchainDocs, documents } = await extractDocumentsWithLlamaParse(file);
     console.log(`Document processed successfully! Found ${langchainDocs.length} sections.`);
     
     // Split documents into chunks for vector storage
     const { CharacterTextSplitter } = await import("langchain/text_splitter");
     const textSplitter = new CharacterTextSplitter({
-      chunkSize: 1000,    // Exact same as chatapp.py line 106
-      chunkOverlap: 200   // Exact same as chatapp.py line 106
+      chunkSize: 1000,    
+      chunkOverlap: 200   
     });
     
     const textChunks = await textSplitter.splitDocuments(langchainDocs);

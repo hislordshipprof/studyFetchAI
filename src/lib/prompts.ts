@@ -2,7 +2,6 @@ import { PromptTemplate } from "@langchain/core/prompts";
 
 /**
  * Custom prompt template
- * Exact replication of lines 146-169 from chatapp.py
  */
 export const CUSTOM_PROMPT_TEMPLATE = `
 Use the following pieces of context to answer the user question. If you

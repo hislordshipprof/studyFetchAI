@@ -6,8 +6,7 @@ import { setupQASystemWithLlamaCloud } from '@/lib/vector-store';
 import { Document } from '@langchain/core/documents';
 
 /**
- * Chat with document using exact chatapp.py approach
- * Exact replication of chatapp.py lines 228-260
+ * Chat with document 
  * POST /api/chat
  */
 export async function POST(request: NextRequest) {
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // Recreate QA system from stored chunks using exact chatapp.py approach
+    // Recreate QA system from stored chunks
     const qaSystem = await setupQASystemWithLlamaCloud(documents);
     if (!qaSystem) {
       return NextResponse.json(
@@ -61,14 +60,10 @@ export async function POST(request: NextRequest) {
 
     console.log('Generating response with OpenAI...');
 
-    // Exact same QA invocation as lines 228-229
+    
     const result = await qaSystem.invoke({ query: message });
     
-    // console.log('Raw result from QA system:', result);
-    // console.log('Result text field:', result.text);
-    
-    // Exact same JSON parsing as lines 230-237
-    let answer: string;
+     let answer: string;
     let sources: string;
     
     try {

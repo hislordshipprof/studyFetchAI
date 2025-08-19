@@ -23,8 +23,8 @@ export async function setupQASystemWithLlamaCloud(documents: Document[], project
     if (needsSplitting) {
       console.log('Splitting large documents into chunks...');
       const textSplitter = new CharacterTextSplitter({
-        chunkSize: 1000,    // Exact same as chatapp.py line 106
-        chunkOverlap: 200   // Exact same as chatapp.py line 106
+        chunkSize: 1000,    
+        chunkOverlap: 200   
       });
       textChunks = await textSplitter.splitDocuments(documents);
       console.log(`Created ${textChunks.length} text chunks`);
@@ -35,19 +35,19 @@ export async function setupQASystemWithLlamaCloud(documents: Document[], project
     const vectorStore = await MemoryVectorStore.fromDocuments(textChunks, getEmbeddings());
     
     const retriever = vectorStore.asRetriever({
-      searchType: "mmr",           // Exact same as line 111
-      searchKwargs: { fetchK: 8 }, // Exact same as Python: {"k": 4, "fetch_k": 8}
-      k: 4                         // Set k parameter separately to match Python exactly
+      searchType: "mmr",          
+      searchKwargs: { fetchK: 8 }, 
+      k: 4                         
     });
     
-    // Exact replication of lines 115-121 from chatapp.py
+
     console.log('Creating RetrievalQA chain...');
     const qaChain = RetrievalQAChain.fromLLM(
       initializeLanguageModel(),
       retriever,
       {
-        prompt: CUSTOM_PROMPT,        // Exact same as line 120
-        returnSourceDocuments: true   // Exact same as line 119
+        prompt: CUSTOM_PROMPT,        
+        returnSourceDocuments: true   
       }
     );
     
