@@ -104,12 +104,6 @@ export default function DocumentCard({ document, onDelete }: DocumentCardProps) 
               )}
             </div>
             
-            {document.lastViewedPage && (
-              <div className="flex items-center gap-1 text-sm text-gray-600">
-                <BookOpen className="h-4 w-4" />
-                <span>Last viewed: Page {document.lastViewedPage}</span>
-              </div>
-            )}
           </div>
         )}
 
@@ -149,12 +143,6 @@ export default function DocumentCard({ document, onDelete }: DocumentCardProps) 
           )}
         </div>
 
-        {/* Resume from specific page hint */}
-        {document.lastViewedPage && document.lastViewedPage > 1 && (
-          <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded text-center">
-            Resume from page {document.lastViewedPage}
-          </p>
-        )}
       </CardContent>
     </Card>
   );
