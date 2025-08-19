@@ -1,31 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Moved from experimental to root level as per Next.js 15 migration
+  serverExternalPackages: ['mupdf'],
+
   // Experimental features for Next.js 15
   experimental: {
     // Server actions configuration (object instead of boolean)
     serverActions: {
       allowedOrigins: ['localhost:3000'],
-    },
-    // Keep MuPDF.js as external package for server-side use only
-    serverComponentsExternalPackages: ['mupdf'],
-  },
-
-  // Turbopack configuration (instead of webpack for development)
-  turbo: {
-    rules: {
-      '*.node': {
-        loaders: ['raw-loader'],
-      },
-    },
-    resolveAlias: {
-      // Handle Node.js modules in Turbopack
-      fs: false,
-      path: false,
-      crypto: false,
-      stream: false,
-      util: false,
-      module: false, // Fix for MuPDF.js
-      url: false,
     },
   },
 

@@ -88,8 +88,11 @@ export async function POST(request: NextRequest) {
         mimeType: file.type,
         pageCount: documents.length,
         textContent: langchainDocs.map(doc => doc.pageContent).join('\n'),
-        chunks: textChunks,                  // Text chunks ready for vector search
-        vectorStore: null,                   // We'll recreate vector store when needed
+        chunks: textChunks.map(chunk => ({
+          pageContent: chunk.pageContent,
+          metadata: chunk.metadata
+        })),                              // Text chunks ready for vector search
+        vectorStore: undefined,              // We'll recreate vector store when needed
         uploadedAt: uploadResult.uploadedAt,
         userId: user.id                      // Use verified user ID
       }
