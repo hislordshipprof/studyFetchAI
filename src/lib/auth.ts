@@ -45,6 +45,11 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
+          // Check if email is verified
+          if (!user.emailVerified) {
+            throw new Error('Please verify your email before signing in');
+          }
+
           // Return user object for session
           return {
             id: user.id,

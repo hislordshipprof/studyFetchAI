@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
+import { sendEmail, generateVerificationEmailHTML } from '@/lib/email';
+import { randomBytes } from 'crypto';
 
 // Validation schema for registration
 const registerSchema = z.object({
@@ -33,12 +35,18 @@ export async function POST(request: NextRequest) {
     // Hash password
     const passwordHash = await hashPassword(password);
 
+    // Generate email verification token
+    const emailVerificationToken = randomBytes(32).toString('hex');
+    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     // Create user in database
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash,
         name: name || email.split('@')[0], // Use email prefix as default name
+        emailVerificationToken,
+        emailVerificationExpires,
       },
       select: {
         id: true,
@@ -48,9 +56,24 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Send verification email
+    const verificationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/verify-email?token=${emailVerificationToken}`;
+    const emailHTML = generateVerificationEmailHTML(verificationUrl, user.email);
+    
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Verify Your Email - StudyFetch',
+        html: emailHTML,
+      });
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Don't fail registration if email fails, just log it
+    }
+
     return NextResponse.json(
       { 
-        message: 'User created successfully',
+        message: 'User created successfully. Please check your email for verification instructions.',
         user: {
           id: user.id,
           email: user.email,
