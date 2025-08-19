@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { uploadPDFToBlob, validatePDFFile, generateStorageFilename } from '@/lib/blob-storage';
-import { extractPDFPageCount, extractPDFMetadata } from '@/lib/pdf-utils';
 import { prisma } from '@/lib/db';
+import { extractDocumentsWithLlamaParse } from '@/lib/llama-parse';
+import { uploadPDFToBlob, validatePDFFile, generateStorageFilename } from '@/lib/blob-storage';
 
 /**
- * Upload a PDF document
+ * Upload a PDF document using LlamaParse 
  * POST /api/documents/upload
  */
 export async function POST(request: NextRequest) {
@@ -15,8 +15,21 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
+        { error: 'Authentication required' },
         { status: 401 }
+      );
+    }
+
+    // Verify user exists in database
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id }
+    });
+    
+    if (!user) {
+      console.error('User not found in database:', session.user.id);
+      return NextResponse.json(
+        { error: 'User not found. Please log out and log back in.' },
+        { status: 404 }
       );
     }
 
@@ -26,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { error: { code: 'NO_FILE', message: 'No file provided' } },
+        { error: 'No file provided' },
         { status: 400 }
       );
     }
@@ -35,148 +48,73 @@ export async function POST(request: NextRequest) {
     const validation = validatePDFFile(file);
     if (!validation.isValid) {
       return NextResponse.json(
-        { error: { code: 'INVALID_FILE', message: validation.error } },
+        { error: validation.error },
         { status: 400 }
       );
     }
 
-    // Generate clean filename
+    // Generate clean filename for storage
     const storageFilename = generateStorageFilename(file.name);
 
-    // Upload to Vercel Blob Storage
-    const uploadResult = await uploadPDFToBlob(file, storageFilename);
-
-    // Extract PDF metadata (page count and optionally text content)
-    let pageCount = 0;
-    let textContent: string | null = null;
+    console.log('Uploading PDF to Vercel Blob storage...');
     
-    try {
-      console.log('Starting PDF metadata extraction...');
-      console.log('File details:', {
-        name: file.name,
-        size: file.size,
-        type: file.type
-      });
-      
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      console.log('Created buffer from file, size:', buffer.length);
-      
-      // Validate it's actually a PDF
-      if (!buffer.subarray(0, 4).toString().startsWith('%PDF')) {
-        console.warn('File does not appear to be a valid PDF, skipping metadata extraction');
-        pageCount = 0;
-      } else {
-        try {
-          // Extract page count (fast operation)
-          console.log('Extracting page count...');
-          pageCount = await extractPDFPageCount(buffer);
-          console.log('Page count extracted:', pageCount);
-          
-          // For small files (< 1MB), also extract text content for future AI use
-          if (file.size < 1024 * 1024) {
-            try {
-              console.log('Extracting text content for small file...');
-              const metadata = await extractPDFMetadata(buffer);
-              textContent = metadata.textContent;
-              console.log('Text content extracted, length:', textContent?.length || 0);
-            } catch (textError) {
-              // Non-critical error, continue without text content
-              console.warn('Failed to extract PDF text content:', textError);
-            }
-          } else {
-            console.log('File too large for text extraction, skipping...');
-          }
-        } catch (pdfError) {
-          console.warn('PDF parsing failed, using fallback:', pdfError);
-          pageCount = 0;
-        }
-      }
-    } catch (error) {
-      // Non-critical error, continue with pageCount = 0
-      console.warn('Failed to extract PDF metadata:', error);
-      if (error instanceof Error) {
-        console.warn('PDF metadata error details:', error.message);
-        console.warn('Error stack:', error.stack);
-      }
-      pageCount = 0;
-    }
-
-    // Create document record in database
-    console.log('Creating document record in database...');
-    console.log('Document data:', {
-      title: file.name.replace('.pdf', ''),
-      filename: storageFilename,
-      originalName: file.name,
-      fileUrl: uploadResult.url,
-      fileSize: uploadResult.size,
-      mimeType: 'application/pdf',
-      pageCount,
-      textContentLength: textContent?.length || 0,
-      userId: session.user.id,
+    // Upload to Vercel Blob Storage first
+    const uploadResult = await uploadPDFToBlob(file, storageFilename);
+    
+    console.log('Processing file with LlamaParse...');
+    
+    const { langchainDocs, documents } = await extractDocumentsWithLlamaParse(file);
+    console.log(`Document processed successfully! Found ${langchainDocs.length} sections.`);
+    
+    // Split documents into chunks for vector storage
+    const { CharacterTextSplitter } = await import("langchain/text_splitter");
+    const textSplitter = new CharacterTextSplitter({
+      chunkSize: 1000,    
+      chunkOverlap: 200   
     });
     
-    const document = await prisma.document.create({
+    const textChunks = await textSplitter.splitDocuments(langchainDocs);
+    console.log(`Created ${textChunks.length} text chunks for vector storage`);
+    
+    // Store in database with Blob storage URL and processed chunks
+    console.log('Creating document record for user:', session.user.id);
+    const documentRecord = await prisma.document.create({
       data: {
-        title: file.name.replace('.pdf', ''), // Remove .pdf extension for title
+        title: file.name.replace('.pdf', ''),
         filename: storageFilename,
         originalName: file.name,
-        fileUrl: uploadResult.url,
+        fileUrl: uploadResult.url,           // Vercel Blob storage URL
         fileSize: uploadResult.size,
-        mimeType: 'application/pdf',
-        pageCount,
-        textContent,
+        mimeType: file.type,
+        pageCount: documents.length,
+        textContent: langchainDocs.map(doc => doc.pageContent).join('\n'),
+        chunks: textChunks,                  // Text chunks ready for vector search
+        vectorStore: null,                   // We'll recreate vector store when needed
         uploadedAt: uploadResult.uploadedAt,
-        userId: session.user.id,
-      },
-    });
-    
-    console.log('Document created successfully:', document.id);
-
-    return NextResponse.json(
-      {
-        data: {
-          id: document.id,
-          title: document.title,
-          filename: document.filename,
-          originalName: document.originalName,
-          fileUrl: document.fileUrl,
-          fileSize: document.fileSize,
-          pageCount: document.pageCount,
-          uploadedAt: document.uploadedAt,
-        },
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error('Error uploading document:', error);
-    
-    // Log more detailed error information
-    if (error instanceof Error) {
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
-
-    // Handle specific blob storage errors
-    if (error instanceof Error) {
-      if (error.message.includes('Failed to upload PDF')) {
-        return NextResponse.json(
-          { error: { code: 'UPLOAD_FAILED', message: error.message } },
-          { status: 500 }
-        );
+        userId: user.id                      // Use verified user ID
       }
-    }
+    });
 
-    return NextResponse.json(
-      { 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: error instanceof Error ? error.message : 'Failed to upload document',
-          details: error instanceof Error ? error.stack : undefined
-        } 
+    return NextResponse.json({ 
+      success: true, 
+      data: {
+        id: documentRecord.id,
+        title: documentRecord.title,
+        filename: documentRecord.filename,
+        originalName: documentRecord.originalName,
+        fileUrl: documentRecord.fileUrl,
+        fileSize: documentRecord.fileSize,
+        pageCount: documentRecord.pageCount,
+        uploadedAt: documentRecord.uploadedAt
       },
-      { status: 500 }
-    );
+      message: `Document processed successfully! Found ${langchainDocs.length} sections.`
+    }, { status: 201 }); // Return 201 Created as expected by frontend
+    
+  } catch (error) {
+    console.error('Upload failed:', error);
+    return NextResponse.json({ 
+      error: 'Upload failed - LlamaParse processing required', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

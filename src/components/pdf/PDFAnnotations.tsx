@@ -50,8 +50,8 @@ export default function PDFAnnotations({
     // Save the context before making changes
     ctx.save();
 
-    // Apply the annotation-specific opacity
-    ctx.globalAlpha = Math.min(opacity, 0.3); // Cap opacity at 30% for readability
+    // Apply uniform light opacity for all highlights (15% for better readability)
+    ctx.globalAlpha = 0.15; // Uniform light opacity for all highlights
 
     switch (type) {
       case 'HIGHLIGHT':
@@ -83,41 +83,21 @@ export default function PDFAnnotations({
   };
 
   const drawHighlight = (ctx: CanvasRenderingContext2D, coordinates: any, color: string) => {
-    // Save the current context
-    ctx.save();
+    // Uniform light highlighting for better text readability
+    // Use solid red color - opacity is controlled by ctx.globalAlpha above
+    ctx.fillStyle = '#ff0000'; // Pure red, opacity controlled globally
     
-    // Set blend mode for better text visibility
-    ctx.globalCompositeOperation = 'multiply';
-    
-    // Use a more transparent yellow for highlights
-    ctx.fillStyle = color === '#ffff00' ? 'rgba(255, 255, 0, 0.15)' : color;
     ctx.fillRect(
       coordinates.x,
       coordinates.y,
       coordinates.width || 200,
       coordinates.height || 20
     );
-    
-    // Add a subtle border for better visibility
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(
-      coordinates.x,
-      coordinates.y,
-      coordinates.width || 200,
-      coordinates.height || 20
-    );
-    
-    // Restore the context
-    ctx.restore();
   };
 
   const drawCircle = (ctx: CanvasRenderingContext2D, coordinates: any, color: string) => {
-    ctx.save();
-    
-    // Make circles more visible with better opacity
-    ctx.strokeStyle = color === '#ff0000' ? 'rgba(255, 0, 0, 0.8)' : color;
+    // Use solid colors - opacity is controlled by ctx.globalAlpha above
+    ctx.strokeStyle = '#ff0000'; // Pure red, opacity controlled globally
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(
@@ -129,18 +109,17 @@ export default function PDFAnnotations({
     );
     ctx.stroke();
     
-    // Add a subtle fill for better visibility
-    ctx.fillStyle = color === '#ff0000' ? 'rgba(255, 0, 0, 0.1)' : color;
+    // Add a subtle fill with same global opacity
+    ctx.fillStyle = '#ff0000'; // Pure red, opacity controlled globally
     ctx.fill();
-    
-    ctx.restore();
   };
 
   const drawArrow = (ctx: CanvasRenderingContext2D, coordinates: any, color: string) => {
     const { x, y, width = 50, height = 20 } = coordinates;
     
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
+    // Use solid colors - opacity is controlled by ctx.globalAlpha above
+    ctx.strokeStyle = '#ff0000'; // Pure red, opacity controlled globally
+    ctx.fillStyle = '#ff0000'; // Pure red, opacity controlled globally
     ctx.lineWidth = 2;
     
     // Arrow body
@@ -159,7 +138,8 @@ export default function PDFAnnotations({
   };
 
   const drawRectangle = (ctx: CanvasRenderingContext2D, coordinates: any, color: string) => {
-    ctx.strokeStyle = color;
+    // Use solid colors - opacity is controlled by ctx.globalAlpha above
+    ctx.strokeStyle = '#ff0000'; // Pure red, opacity controlled globally
     ctx.lineWidth = 2;
     ctx.strokeRect(
       coordinates.x,
@@ -170,7 +150,8 @@ export default function PDFAnnotations({
   };
 
   const drawUnderline = (ctx: CanvasRenderingContext2D, coordinates: any, color: string) => {
-    ctx.strokeStyle = color;
+    // Use solid colors - opacity is controlled by ctx.globalAlpha above
+    ctx.strokeStyle = '#ff0000'; // Pure red, opacity controlled globally
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(coordinates.x, coordinates.y);
@@ -178,43 +159,11 @@ export default function PDFAnnotations({
     ctx.stroke();
   };
 
+  // Simplified animation that doesn't interfere with uniform opacity
   const animateAnnotation = (ctx: CanvasRenderingContext2D, annotation: Annotation) => {
-    // Enhanced animation for new annotations - gentle fade-in
-    let animationStep = 0;
-    const maxSteps = 20;
-    const startOpacity = 0;
-    const endOpacity = Math.min(annotation.opacity, 0.3);
-    
-    const animate = () => {
-      if (animationStep >= maxSteps) return;
-      
-      const progress = animationStep / maxSteps;
-      const currentOpacity = startOpacity + (endOpacity - startOpacity) * progress;
-      
-      // Clear the previous frame for this annotation
-      ctx.save();
-      ctx.globalAlpha = currentOpacity;
-      
-      // Redraw with current opacity
-      const { coordinates, type, color } = annotation;
-      
-      switch (type) {
-        case 'HIGHLIGHT':
-          drawHighlight(ctx, coordinates, color);
-          break;
-        case 'CIRCLE':
-          drawCircle(ctx, coordinates, color);
-          break;
-        // Add other types as needed
-      }
-      
-      ctx.restore();
-      
-      animationStep++;
-      setTimeout(animate, 50); // Smooth 20fps animation
-    };
-    
-    animate();
+    // Skip animation to prevent opacity conflicts - annotations appear immediately with uniform opacity
+    // This ensures consistent 15% opacity for all highlights without animation interference
+    return;
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {

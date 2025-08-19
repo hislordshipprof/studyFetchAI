@@ -16,6 +16,9 @@ export interface Message {
   metadata?: {
     annotations?: any[];
     navigateTo?: number;
+    sources?: string[];
+    sourceDocuments?: any[];
+    pageMappings?: Array<{excerpt: string, pages: number[]}>;
     [key: string]: any;
   };
   timestamp: Date;
