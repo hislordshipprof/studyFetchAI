@@ -70,6 +70,7 @@ export default function ChatInterface({
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
+  const [isVoiceProcessing, setIsVoiceProcessing] = useState(false);
   const [currentSources, setCurrentSources] = useState<string[]>([]); // Store current AI sources
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const recognition = useRef<any>(null);
@@ -214,7 +215,7 @@ export default function ChatInterface({
         }
       }
 
-      // Create AI message with final response (citations already injected)
+      // Create AI message with final response
       const aiMessage: Message = {
         id: `msg_${Date.now()}`,
         content: finalAiResponse,
@@ -255,13 +256,22 @@ export default function ChatInterface({
   };
 
   const handleVoiceToggle = () => {
-    if (!isVoiceEnabled) return;
+    if (!isVoiceEnabled || isVoiceProcessing) return;
 
     if (isRecording) {
       recognition.current?.stop();
       setIsRecording(false);
       setInterimTranscript('');
     } else {
+      // Clear any existing input when starting voice recording
+      setInputValue('');
+      
+      // Auto-enable TTS for hands-free voice interaction
+      if (!isSpeaking) {
+        setIsSpeaking(true);
+        console.log('Auto-enabled TTS for voice interaction');
+      }
+      
       recognition.current?.start();
       setIsRecording(true);
     }
@@ -436,8 +446,8 @@ export default function ChatInterface({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask a question about this document..."
-              disabled={isLoading}
+              placeholder={isRecording ? "Listening..." : isVoiceProcessing ? "Processing voice..." : "Ask a question about this document..."}
+              disabled={isLoading || isVoiceProcessing}
               className="pr-20"
             />
             {/* Real-time transcript overlay */}
@@ -456,9 +466,10 @@ export default function ChatInterface({
                 variant="ghost"
                 size="sm"
                 onClick={handleVoiceToggle}
-                disabled={isLoading}
+                disabled={isLoading || isVoiceProcessing}
                 className={`absolute right-12 top-1/2 transform -translate-y-1/2 ${
-                  isRecording ? 'text-red-500 animate-pulse' : 'text-gray-400'
+                  isRecording ? 'text-red-500 animate-pulse' : 
+                  isVoiceProcessing ? 'text-blue-500' : 'text-gray-400'
                 }`}
               >
                 {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -466,19 +477,27 @@ export default function ChatInterface({
             )}
           </div>
           <Button
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isLoading}
+            onClick={() => handleSendMessage()}
+            disabled={!inputValue.trim() || isLoading || isVoiceProcessing}
             size="sm"
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        {isRecording && (
+        {(isRecording || isVoiceProcessing) && (
           <div className="mt-2 space-y-1 flex-shrink-0">
-            <p className="text-xs text-red-500 flex items-center">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
-              Listening... Speak now
-            </p>
+            {isRecording && (
+              <p className="text-xs text-red-500 flex items-center">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
+                Listening... Speak now
+              </p>
+            )}
+            {isVoiceProcessing && (
+              <p className="text-xs text-blue-500 flex items-center">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-2"></div>
+                Processing voice message...
+              </p>
+            )}
             {interimTranscript && (
               <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded max-h-20 overflow-y-auto">
                 <span className="font-medium">Real-time:</span> "{interimTranscript}"

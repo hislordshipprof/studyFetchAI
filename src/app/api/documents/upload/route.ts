@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     console.log('Creating document record for user:', session.user.id);
     const documentRecord = await prisma.document.create({
       data: {
-        title: file.name.replace('.pdf', ''),
+        title: file.name.replace('.pdf', '').trim(),
         filename: storageFilename,
         originalName: file.name,
         fileUrl: uploadResult.url,           // Vercel Blob storage URL
