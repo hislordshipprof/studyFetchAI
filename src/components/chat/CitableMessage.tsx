@@ -16,7 +16,7 @@ export default function CitableMessage({
   
   // Parse content and make page references clickable
   const renderContentWithCitations = (text: string) => {
-    // Regex to find page citations like "(page 5)" or "(pages 2, 5, 7)"
+    // Regex to find page citations 
     const citationRegex = /\((pages?\s+[\d,\s]+)\)/g;
     
     const parts = [];
@@ -30,7 +30,7 @@ export default function CitableMessage({
       }
       
       // Extract page numbers from the citation
-      const citationText = match[1]; // "page 5" or "pages 2, 5, 7"
+      const citationText = match[1];
       const pageNumbers = citationText
         .replace(/pages?/g, '')
         .split(',')

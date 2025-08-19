@@ -215,7 +215,7 @@ export default function ChatInterface({
         }
       }
 
-      // Create AI message with final response (citations already injected)
+      // Create AI message with final response
       const aiMessage: Message = {
         id: `msg_${Date.now()}`,
         content: finalAiResponse,
@@ -256,13 +256,22 @@ export default function ChatInterface({
   };
 
   const handleVoiceToggle = () => {
-    if (!isVoiceEnabled) return;
+    if (!isVoiceEnabled || isVoiceProcessing) return;
 
     if (isRecording) {
       recognition.current?.stop();
       setIsRecording(false);
       setInterimTranscript('');
     } else {
+      // Clear any existing input when starting voice recording
+      setInputValue('');
+      
+      // Auto-enable TTS for hands-free voice interaction
+      if (!isSpeaking) {
+        setIsSpeaking(true);
+        console.log('Auto-enabled TTS for voice interaction');
+      }
+      
       recognition.current?.start();
       setIsRecording(true);
     }

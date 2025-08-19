@@ -6,7 +6,14 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma db push --force-reset",
+    "postinstall": "prisma generate",
+    "type-check": "tsc --noEmit",
+    "build:production": "npm run db:generate && npm run type-check && npm run lint && npm run build"
   },
   "dependencies": {
     "@langchain/community": "^0.3.51",
