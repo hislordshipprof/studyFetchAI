@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import type { Document, Annotation } from "@/types/pdf";
 import type { Message } from "@/types/chat";
-import { generateHighlightAnnotations } from "@/lib/pdf-annotations";
+import { generateHighlightAnnotations, injectPageCitations } from "@/lib/pdf-annotations";
+import CitableMessage from "./CitableMessage";
 
 // Helper function for fallback annotations when MuPDF document not loaded
 const generateBasicAnnotationsFromSources = async (sources: string[], sourceDocuments: any[]): Promise<Annotation[]> => {
@@ -170,22 +171,10 @@ export default function ChatInterface({
       const result = await response.json();
       console.log('AI response received:', result);
 
-      // Create AI message with the real response
-      const aiMessage: Message = {
-        id: `msg_${Date.now()}`,
-        content: result.answer,
-        role: 'ASSISTANT',
-        timestamp: new Date(),
-        conversationId: `conv_${document.id}`,
-        metadata: {
-          sources: result.sources,
-          sourceDocuments: result.sourceDocuments
-        }
-      };
-
-      onSendMessage(aiMessage);
-
-      // Store sources and generate annotations (exact same as chatapp.py lines 248-273)
+      // Store sources and generate annotations FIRST (exact same as chatapp.py lines 248-273)
+      let finalAiResponse = result.answer;
+      let finalPageMappings: Array<{excerpt: string, pages: number[]}> = [];
+      
       if (result.sources && result.sources.length > 0) {
         // Update session state with new sources for highlighting (lines 248-249)
         setCurrentSources(result.sources);
@@ -194,31 +183,57 @@ export default function ChatInterface({
         
         // Generate real text-based annotations using server-side MuPDF.js API (line 273)
         // Exact same as chatapp.py: generate_highlight_annotations(doc, st.session_state.sources)
-        const annotations = await generateHighlightAnnotations(document.id, result.sources);
+        const highlightResult = await generateHighlightAnnotations(document.id, result.sources);
         
-        if (annotations.length > 0) {
-          onAddAnnotations(annotations);
+        if (highlightResult.annotations.length > 0) {
+          onAddAnnotations(highlightResult.annotations);
+          
+          // Inject clickable page citations into AI response BEFORE sending message
+          finalAiResponse = injectPageCitations(
+            result.answer,
+            result.sources,
+            highlightResult.pageMappings
+          );
+          
+          finalPageMappings = highlightResult.pageMappings;
           
           // Navigate to first highlighted page (like chatapp.py)
-          const firstPage = annotations[0].pageNumber;
+          const firstPage = highlightResult.annotations[0].pageNumber;
           onPageNavigation(firstPage);
           
-          console.log(`Generated ${annotations.length} highlights, navigating to page ${firstPage}`);
+          console.log(`Generated ${highlightResult.annotations.length} highlights with interactive citations, navigating to page ${firstPage}`);
         } else {
           console.log('No text matches found for highlighting');
           // Fallback to basic annotations from sourceDocuments if no text search results
-          const annotations = await generateBasicAnnotationsFromSources(result.sources, result.sourceDocuments);
-          onAddAnnotations(annotations);
+          const fallbackAnnotations = await generateBasicAnnotationsFromSources(result.sources, result.sourceDocuments);
+          onAddAnnotations(fallbackAnnotations);
           
-          if (annotations.length > 0) {
-            onPageNavigation(annotations[0].pageNumber);
+          if (fallbackAnnotations.length > 0) {
+            onPageNavigation(fallbackAnnotations[0].pageNumber);
           }
         }
       }
 
+      // Create AI message with final response (citations already injected)
+      const aiMessage: Message = {
+        id: `msg_${Date.now()}`,
+        content: finalAiResponse,
+        role: 'ASSISTANT',
+        timestamp: new Date(),
+        conversationId: `conv_${document.id}`,
+        metadata: {
+          sources: result.sources,
+          sourceDocuments: result.sourceDocuments,
+          pageMappings: finalPageMappings
+        }
+      };
+
+      // Send the complete message once (prevents double rendering)
+      onSendMessage(aiMessage);
+
       // Speak the response if TTS is enabled
       if (isSpeaking && 'speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(result.answer);
+        const utterance = new SpeechSynthesisUtterance(finalAiResponse);
         speechSynthesis.speak(utterance);
       }
 
@@ -357,11 +372,19 @@ export default function ChatInterface({
                       ? 'bg-blue-600 text-white' 
                       : 'bg-gray-100 text-gray-900'
                   }`}>
-                    <p className="text-sm leading-relaxed">{message.content}</p>
-                    {message.metadata?.sources && message.metadata.sources.length > 0 && (
+                    {message.role === 'ASSISTANT' && message.metadata?.pageMappings ? (
+                      <CitableMessage 
+                        content={message.content}
+                        pageMappings={message.metadata.pageMappings}
+                        onPageNavigation={onPageNavigation}
+                      />
+                    ) : (
+                      <p className="text-sm leading-relaxed">{message.content}</p>
+                    )}
+                    {message.metadata?.pageMappings && message.metadata.pageMappings.length > 0 && (
                       <div className="mt-2 pt-2 border-t border-gray-200">
-                        <p className="text-xs text-blue-600 font-medium">
-                          📄 Found {message.metadata.sources.length} source(s) in document
+                        <p className="text-xs text-gray-500">
+                          📄 Interactive citations • Click page numbers to navigate
                         </p>
                       </div>
                     )}

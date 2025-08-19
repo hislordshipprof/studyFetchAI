@@ -232,12 +232,31 @@ export async function POST(request: NextRequest) {
 
     // Find pages with highlights (for navigation) - 1-based page numbers
     const highlightedPages = [...new Set(annotations.map(ann => ann.pageNumber))].sort((a, b) => a - b);
+    
+    // Create source-to-page mapping for interactive citations
+    const sourcePageMapping = new Map<string, number[]>();
+    annotations.forEach(annotation => {
+      const excerpt = annotation.excerpt;
+      if (!sourcePageMapping.has(excerpt)) {
+        sourcePageMapping.set(excerpt, []);
+      }
+      if (!sourcePageMapping.get(excerpt)!.includes(annotation.pageNumber)) {
+        sourcePageMapping.get(excerpt)!.push(annotation.pageNumber);
+      }
+    });
+    
+    // Convert to array format for JSON response
+    const pageMappings = Array.from(sourcePageMapping.entries()).map(([excerpt, pages]) => ({
+      excerpt,
+      pages: pages.sort((a, b) => a - b)
+    }));
 
     return NextResponse.json({
       success: true,
       annotations,
       highlightedPages,
-      totalMatches: annotations.length
+      totalMatches: annotations.length,
+      pageMappings // New: source text to page number mappings
     });
 
   } catch (error) {
