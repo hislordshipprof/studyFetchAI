@@ -32,8 +32,13 @@ An AI-powered PDF tutor that helps students understand documents through interac
 
 1. Clone the repository:
 ```bash
+<<<<<<< HEAD
 git clone <repository-url>
 cd clarifypdf
+=======
+git clone https://github.com/hislordshipprof/studyFetchAI
+cd studyfetch
+>>>>>>> origin/master
 ```
 
 2. Install dependencies:
@@ -159,8 +164,11 @@ Private - ClarifyPDF Technical Assessment
 
 ## Demo
 
-[Live Demo URL] - Will be added upon deployment
+[[Live Demo URL](https://study-fetch-ai.vercel.app/)] - Will be added upon deployment
 
+<<<<<<< HEAD
 ## Support
 
 For issues or questions about this assessment, please contact support@clarifypdf.com
+=======
+>>>>>>> origin/master
