@@ -302,7 +302,7 @@ export default function ChatInterface({
       <div className="border-b border-gray-200 p-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">AI Tutor</h3>
+            <h3 className="text-lg font-semibold text-gray-900">ClarifyPDF</h3>
             <p className="text-sm text-gray-500">
               Ask questions about {document.title}
             </p>
@@ -371,7 +371,7 @@ export default function ChatInterface({
                       <Bot className="h-4 w-4 text-green-600" />
                     )}
                     <span className="text-xs text-gray-500">
-                      {message.role === 'USER' ? 'You' : 'AI Tutor'}
+                      {message.role === 'USER' ? 'You' : 'ClarifyPDF'}
                     </span>
                     <span className="text-xs text-gray-400">
                       {formatTime(message.timestamp)}
@@ -417,7 +417,7 @@ export default function ChatInterface({
               <div className="max-w-[80%]">
                 <div className="flex items-center gap-2 mb-1">
                   <Bot className="h-4 w-4 text-green-600" />
-                  <span className="text-xs text-gray-500">AI Tutor</span>
+                  <span className="text-xs text-gray-500">ClarifyPDF</span>
                   <Clock className="h-3 w-3 text-gray-400" />
                 </div>
                 <div className="p-3 rounded-lg bg-gray-100">

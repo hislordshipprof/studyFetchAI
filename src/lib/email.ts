@@ -8,7 +8,7 @@ interface EmailConfig {
 }
 
 const emailConfig: EmailConfig = {
-  from: process.env.EMAIL_FROM || 'noreply@studyfetch.com',
+  from: process.env.EMAIL_FROM || 'noreply@clarifypdf.com',
   service: process.env.EMAIL_SERVICE || (process.env.NODE_ENV === 'production' ? 'sendgrid' : 'console'),
   apiKey: process.env.SENDGRID_API_KEY,
 };
@@ -79,17 +79,17 @@ export function generateVerificationEmailHTML(verificationUrl: string, userEmail
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Verify Your Email - StudyFetch</title>
+      <title>Verify Your Email - ClarifyPDF</title>
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
       <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #2563eb; text-align: center;">StudyFetch</h1>
+        <h1 style="color: #2563eb; text-align: center;">ClarifyPDF</h1>
         
         <h2>Verify Your Email Address</h2>
         
         <p>Hi there!</p>
         
-        <p>Thanks for signing up for StudyFetch! To complete your registration and start using our AI-powered study tools, please verify your email address by clicking the button below:</p>
+        <p>Thanks for signing up for ClarifyPDF! To complete your registration and start using our AI-powered study tools, please verify your email address by clicking the button below:</p>
         
         <div style="text-align: center; margin: 30px 0;">
           <a href="${verificationUrl}" 
@@ -103,7 +103,7 @@ export function generateVerificationEmailHTML(verificationUrl: string, userEmail
         
         <p><strong>This verification link will expire in 24 hours.</strong></p>
         
-        <p>If you didn't create an account with StudyFetch, you can safely ignore this email.</p>
+        <p>If you didn't create an account with ClarifyPDF, you can safely ignore this email.</p>
         
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
         

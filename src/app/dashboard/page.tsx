@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import useSWR, { mutate } from "swr";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -146,8 +147,8 @@ export default function DashboardPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-lg bg-blue-600"></div>
-              <span className="text-xl font-bold">StudyFetch AI Tutor</span>
+              <Image src="/brand/clarifypdf-logo.svg" alt="ClarifyPDF" width={32} height={32} />
+              <span className="text-xl font-bold">ClarifyPDF</span>
             </Link>
             <div className="flex items-center space-x-4">
               <div className="text-sm">

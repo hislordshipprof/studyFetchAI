@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     try {
       await sendEmail({
         to: user.email,
-        subject: 'Verify Your Email - StudyFetch',
+        subject: 'Verify Your Email - ClarifyPDF',
         html: emailHTML,
       });
     } catch (emailError) {

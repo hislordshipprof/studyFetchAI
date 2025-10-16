@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 export default function HomePage() {
   return (
@@ -9,8 +10,8 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-lg bg-blue-600"></div>
-              <span className="text-xl font-bold">StudyFetch AI Tutor</span>
+              <Image src="/brand/clarifypdf-logo.svg" alt="ClarifyPDF" width={32} height={32} />
+              <span className="text-xl font-bold">ClarifyPDF</span>
             </div>
             <div className="flex items-center space-x-4">
               <Link href="/login">
@@ -117,7 +118,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t bg-white py-8">
         <div className="container mx-auto px-4 text-center text-gray-600">
-          <p>&copy; 2025 StudyFetch AI Tutor. Built for the StudyFetch Technical Assessment.</p>
+          <p>&copy; 2025 ClarifyPDF.</p>
         </div>
       </footer>
     </div>
