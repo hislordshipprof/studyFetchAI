@@ -96,8 +96,8 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development',
+  secret: process.env.NEXTAUTH_SECRET || "c0d3d31e3033a0735ceb9637b5367bbdf11e8921740f349123ab7139845e6181",
+  debug: false,
 };
 
 // Helper function to get server session
