@@ -45,12 +45,17 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
+          // Check if email is verified
+          if (!user.emailVerified) {
+            throw new Error('Please verify your email before signing in');
+          }
+
           // Return user object for session
           return {
             id: user.id,
             email: user.email,
-            name: user.name,
-            avatar: user.avatar,
+            name: user.name || user.email.split('@')[0],
+            avatar: user.avatar || undefined,
           };
         } catch (error) {
           console.error('Authentication error:', error);
@@ -68,7 +73,6 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/login',
-    signUp: '/register',
   },
   callbacks: {
     async jwt({ token, user }) {

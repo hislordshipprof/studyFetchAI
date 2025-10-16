@@ -57,15 +57,15 @@ export default function DocumentCard({ document, onDelete }: DocumentCardProps) 
     <Card className="hover:shadow-lg transition-shadow group">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-2">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
               <Badge variant="secondary" className={status.color}>
                 {status.text}
               </Badge>
             </div>
-            <CardTitle className="text-lg leading-tight truncate" title={document.title}>
-              {document.title}
+            <CardTitle className="text-lg leading-tight truncate max-w-full" title={document.title}>
+              {document.title.length > 30 ? `${document.title.substring(0, 30)}...` : document.title}
             </CardTitle>
             <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
               <span>{document.pageCount} pages</span>
@@ -104,12 +104,6 @@ export default function DocumentCard({ document, onDelete }: DocumentCardProps) 
               )}
             </div>
             
-            {document.lastViewedPage && (
-              <div className="flex items-center gap-1 text-sm text-gray-600">
-                <BookOpen className="h-4 w-4" />
-                <span>Last viewed: Page {document.lastViewedPage}</span>
-              </div>
-            )}
           </div>
         )}
 
@@ -149,12 +143,6 @@ export default function DocumentCard({ document, onDelete }: DocumentCardProps) 
           )}
         </div>
 
-        {/* Resume from specific page hint */}
-        {document.lastViewedPage && document.lastViewedPage > 1 && (
-          <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded text-center">
-            Resume from page {document.lastViewedPage}
-          </p>
-        )}
       </CardContent>
     </Card>
   );

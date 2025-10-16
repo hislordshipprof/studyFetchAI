@@ -6,8 +6,15 @@ import AuthSessionProvider from "@/components/providers/SessionProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "StudyFetch AI PDF Tutor",
+  title: "ClarifyPDF – AI PDF Tutor",
   description: "AI-powered PDF tutor that helps students understand documents through interactive chat and real-time annotations",
+  openGraph: {
+    title: "ClarifyPDF – AI PDF Tutor",
+    description: "AI-powered PDF tutor for PDFs",
+  },
+  icons: {
+    icon: "/brand/favicon.svg",
+  },
 };
 
 export default function RootLayout({

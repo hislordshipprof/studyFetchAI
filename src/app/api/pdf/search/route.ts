@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
         }
         
         // Strategy 2: Break into sentences and search each
-        const sentences = excerpt.split(/[.!?]\s+/).filter(s => s.trim().length > 15);
+        const sentences = excerpt.split(/[.!?]\s+/).filter((s: string) => s.trim().length > 15);
         for (const sentence of sentences) {
           try {
             const searchResults = page.search(sentence.trim());

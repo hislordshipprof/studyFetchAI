@@ -87,7 +87,7 @@ export default function PDFViewer({
 
   const handleDownload = () => {
     if (document.fileUrl) {
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = document.fileUrl;
       link.download = document.originalName || document.filename;
       link.target = '_blank';

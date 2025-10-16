@@ -8,15 +8,18 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  passwordHash  String
-  name          String?
-  avatar        String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  conversations Conversation[]
-  documents     Document[]
+  id                       String         @id @default(cuid())
+  email                    String         @unique
+  passwordHash             String
+  name                     String?
+  avatar                   String?
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+  emailVerificationExpires DateTime?
+  emailVerificationToken   String?        @unique
+  emailVerified            Boolean        @default(false)
+  conversations            Conversation[]
+  documents                Document[]
 
   @@map("users")
 }

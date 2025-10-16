@@ -1,4 +1,4 @@
-# StudyFetch AI PDF Tutor
+# ClarifyPDF – AI PDF Tutor
 
 An AI-powered PDF tutor that helps students understand documents through interactive chat and real-time annotations.
 
@@ -33,7 +33,7 @@ An AI-powered PDF tutor that helps students understand documents through interac
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd studyfetch
+cd clarifypdf
 ```
 
 2. Install dependencies:
@@ -46,7 +46,7 @@ Create a `.env.local` file in the root directory with the following:
 
 ```env
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/studyfetch_db"
+DATABASE_URL="postgresql://user:password@localhost:5432/clarifypdf_db"
 
 # Authentication
 NEXTAUTH_URL="http://localhost:3000"
@@ -151,11 +151,11 @@ See `.env.example` for all required environment variables:
 
 ## Contributing
 
-This is a technical assessment project for StudyFetch. For any questions, contact marelle@studyfetch.com.
+This is a technical assessment project for ClarifyPDF. For any questions, contact me at beagyekum21@gmail.com
 
 ## License
 
-Private - StudyFetch Technical Assessment
+Private - ClarifyPDF Technical Assessment
 
 ## Demo
 
@@ -163,4 +163,4 @@ Private - StudyFetch Technical Assessment
 
 ## Support
 
-For issues or questions about this assessment, please contact marelle@studyfetch.com
+For issues or questions about this assessment, please contact support@clarifypdf.com
