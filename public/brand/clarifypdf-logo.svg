@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <!-- Chat bubble background -->
+  <path d="M56 28h144c15.464 0 28 12.536 28 28v92c0 15.464-12.536 28-28 28H112l-40 40v-40H56c-15.464 0-28-12.536-28-28V56c0-15.464 12.536-28 28-28z" fill="url(#g)"/>
+  <!-- Open book icon -->
+  <g fill="#fff">
+    <path d="M76 78c0-4.418 3.582-8 8-8h40c10.493 0 20.09 4.22 28 11.637V164c-7.91-7.417-17.507-11.637-28-11.637H84c-4.418 0-8-3.582-8-8V78z" opacity=".95"/>
+    <path d="M180 78c0-4.418-3.582-8-8-8h-40c-10.493 0-20.09 4.22-28 11.637V164c7.91-7.417 17.507-11.637 28-11.637h40c4.418 0 8-3.582 8-8V78z" opacity=".95"/>
+    <rect x="124" y="86" width="8" height="68" rx="4"/>
+  </g>
+</svg>
+

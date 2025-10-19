@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                       String         @id @default(cuid())
+  email                    String         @unique
+  passwordHash             String
+  name                     String?
+  avatar                   String?
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+  emailVerificationExpires DateTime?
+  emailVerificationToken   String?        @unique
+  emailVerified            Boolean        @default(false)
+  conversations            Conversation[]
+  documents                Document[]
+
+  @@map("users")
+}
+
+model Document {
+  id             String          @id @default(cuid())
+  title          String
+  filename       String
+  originalName   String
+  fileUrl        String
+  fileSize       Int
+  mimeType       String
+  pageCount      Int
+  textContent    String?
+  chunks         Json?
+  vectorStore    Json?
+  uploadedAt     DateTime        @default(now())
+  lastAccessedAt DateTime        @default(now())
+  userId         String
+  annotations    Annotation[]
+  conversations  Conversation[]
+  documentChunks DocumentChunk[]
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  pageNumber Int
+  content    String
+  createdAt  DateTime @default(now())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_chunks")
+}
+
+model Conversation {
+  id            String    @id @default(cuid())
+  title         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastMessageAt DateTime  @default(now())
+  userId        String
+  documentId    String
+  document      Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages      Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String              @id @default(cuid())
+  content        String
+  role           MessageRole
+  metadata       Json?
+  timestamp      DateTime            @default(now())
+  conversationId String
+  annotations    MessageAnnotation[]
+  conversation   Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Annotation {
+  id                 String              @id @default(cuid())
+  type               AnnotationType
+  pageNumber         Int
+  coordinates        Json
+  content            String?
+  color              String              @default("#ffff00")
+  opacity            Float               @default(0.3)
+  createdAt          DateTime            @default(now())
+  documentId         String
+  document           Document            @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  messageAnnotations MessageAnnotation[]
+
+  @@map("annotations")
+}
+
+model MessageAnnotation {
+  id           String     @id @default(cuid())
+  messageId    String
+  annotationId String
+  annotation   Annotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  message      Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, annotationId])
+  @@map("message_annotations")
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum AnnotationType {
+  HIGHLIGHT
+  CIRCLE
+  ARROW
+  RECTANGLE
+  NOTE
+  UNDERLINE
+}
